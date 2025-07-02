@@ -9,7 +9,24 @@ class DashboardPage extends StatefulWidget{
 
 class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserver{
   late Size currentSize;
-  late double blockedWidth = 600;
+  late double blockedWidth = View.of(context).physicalSize.width;
+  final double blockedWidthRatio = 3.25; //width ratio of left half to right half of dashboard
+
+  //this is an affront to god.
+  //i dont know how i got this equation
+  //i know that *(2/3) stopped the variable overflow
+  //and then i took away the padding from each widget which solved a problem
+  //but then the bottom kept on overflowing on startup and i dont know why so ive ended up with this
+  //this works well enough to appease me
+  //but just dont try to fix this
+  //for your own sake
+  late double blockedHeight = View.of(context).physicalSize.height * (2/3) - 91;
+
+  //height ratio of blocked bar to notifications e.g. 1 : 14 with a height of 600px would give 40px : 560px
+  late double blockedDurationHeight = 50;
+  final double blockedHeightRatio = 10;
+  //height ratio to the blocked textbox to the duration bar e.g. 9 : 1 with a height of 600px and a height ratio of 15 would give 36px : 4px
+  final double blockedDurationHeightRatio = 10;
 
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
@@ -30,7 +47,10 @@ class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserve
   void didChangeMetrics(){
     currentSize = View.of(context).physicalSize;
     setState(() {
-      blockedWidth = currentSize.width/3.25;
+      blockedWidth = currentSize.width;
+      print(currentSize.height);
+      blockedHeight = currentSize.height*(2/3) - 88;
+      blockedDurationHeight = blockedHeight * (1/blockedDurationHeightRatio);
       //dont even ask i have no idea why this needs to be divided by 3 flutter thinks that the width of the window is 1200 when its actually 600
     });
   }
@@ -51,8 +71,8 @@ class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserve
                     borderRadius: BorderRadius.only(topRight: Radius.circular(10), topLeft: Radius.circular(10)),
                     color: Colors.grey[900],
                   ),
-                  height: 50,
-                  width: blockedWidth,
+                  height: blockedDurationHeight * ((blockedDurationHeightRatio-1)/blockedDurationHeightRatio),
+                  width: blockedWidth/blockedWidthRatio,
                   child: Padding(
                     padding: const EdgeInsets.all(8),
                     child: Text("Currently Blocked Ex.", style: TextStyle(color: Colors.white),),
@@ -68,20 +88,31 @@ class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserve
                         borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16)),
                         color: Colors.cyan[400],
                       ),
-                      width: blockedWidth*(2/3),
-                      height: 5,
+                      width: (blockedWidth/blockedWidthRatio)*(2/3),
+                      height: blockedDurationHeight * (1/blockedDurationHeightRatio),
                     ),
                     Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.only(bottomRight: Radius.circular(16)),
                         color: Colors.blueGrey[800],
                       ),
-                      width: blockedWidth*(1/3),
-                      height: 5,
+                      width: (blockedWidth/blockedWidthRatio)*(1/3),
+                      height: blockedDurationHeight * (1/blockedDurationHeightRatio),
                     )
                   ],
                 ),
-              )
+              ),
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                ),
+                width: blockedWidth/blockedWidthRatio,
+                height: blockedHeight * ((blockedHeightRatio-1)/blockedHeightRatio),
+                child: Text("what the fuck is happening", style: TextStyle(color: Colors.white),),
+              ),
+            )
             ],
           ),
           Expanded(

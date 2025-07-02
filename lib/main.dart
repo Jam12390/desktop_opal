@@ -52,6 +52,7 @@ class MainPageState extends State<MainPage> {
       appBar: AppBar(
 
         backgroundColor: Colors.red,
+        toolbarHeight: 40,
 
         title: appbarText,
       ),
