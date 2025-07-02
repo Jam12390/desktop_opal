@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
       ),
-      home: const MainPage(title: 'Flutter Demo Home Page'),
+      home: const MainPage(title: 'Example Text'),
     );
   }
 }
@@ -30,7 +30,8 @@ class MainPage extends StatefulWidget {
 }
 
 class MainPageState extends State<MainPage> {
-  var page;
+  Widget page = DashboardPage();
+  Text appbarText = Text("Dashboard");
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +40,7 @@ class MainPageState extends State<MainPage> {
 
         backgroundColor: Colors.red,
 
-        title: Text(widget.title),
+        title: appbarText,
       ),
       drawer: Drawer(
         child: ListView(
@@ -66,19 +67,21 @@ class MainPageState extends State<MainPage> {
                 ),
               ),
             ),
-            CustomListTile(Icon(Icons.piano_rounded), Text("ow"), () {
-              setState(() {
-                page = otherPage();
-                Navigator.pop(context);
-              });;
-            }),
             CustomListTile(Icon(Icons.dashboard_rounded, color: Colors.grey[800],), Text("Dashboard"), () {
               setState(() {
                 page = DashboardPage();
+                appbarText = Text("Dashboard");
                 Navigator.pop(context);
               });
               }
-            )
+            ),
+            CustomListTile(Icon(Icons.piano_rounded), Text("ow"), () {
+              setState(() {
+                page = OtherPage();
+                appbarText = Text("Other page");
+                Navigator.pop(context);
+              });
+            }),
           ],
         ),
       ),
@@ -87,7 +90,9 @@ class MainPageState extends State<MainPage> {
   }
 }
 
-class otherPage extends StatelessWidget{
+class OtherPage extends StatelessWidget{
+  const OtherPage({super.key});
+
   @override
   Widget build(BuildContext context){
     return Scaffold(
@@ -103,7 +108,7 @@ class CustomListTile extends StatelessWidget{
   final Icon icon;
   final VoidCallback onTapFunction;
 
-  const CustomListTile(this.icon, this.text, this.onTapFunction);
+  const CustomListTile(this.icon, this.text, this.onTapFunction, {super.key});
 
   @override
   Widget build(BuildContext context){
