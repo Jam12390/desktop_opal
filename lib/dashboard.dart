@@ -7,8 +7,33 @@ class DashboardPage extends StatefulWidget{
   State<DashboardPage> createState() => DashboardPageState();
 }
 
-class DashboardPageState extends State<DashboardPage>{
-  final double blockedWidth = 600;
+class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserver{
+  late Size currentSize;
+  late double blockedWidth = 600;
+
+  WidgetsBinding get widgetBinding => WidgetsBinding.instance;
+
+  @override
+  void didChangeDependencies(){
+    super.didChangeDependencies();
+    currentSize = View.of(context).physicalSize;
+    widgetBinding.addObserver(this);
+  }
+
+  @override
+  void dispose(){
+    widgetBinding.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics(){
+    currentSize = View.of(context).physicalSize;
+    setState(() {
+      blockedWidth = currentSize.width/3.25;
+      //dont even ask i have no idea why this needs to be divided by 3 flutter thinks that the width of the window is 1200 when its actually 600
+    });
+  }
 
   @override
   Widget build(BuildContext context){

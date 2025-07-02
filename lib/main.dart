@@ -1,7 +1,20 @@
+import 'dart:io';
 import 'package:desktop_opal/dashboard.dart';
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 
-void main() {
+void main() async{
+  const double maxSizeX = 1200;
+  const double maxSizeY = 800;
+  const double minSizeX = 800;
+  const double minSizeY = 400;
+
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+  if (Platform.isWindows) {
+    WindowManager.instance.setMinimumSize(const Size(minSizeX, minSizeY));
+    WindowManager.instance.setMaximumSize(const Size(maxSizeX, maxSizeY));
+  }
   runApp(const MyApp());
 }
 
