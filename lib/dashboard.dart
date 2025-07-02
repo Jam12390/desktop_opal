@@ -74,8 +74,12 @@ class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserve
                   height: blockedDurationHeight * ((blockedDurationHeightRatio-1)/blockedDurationHeightRatio),
                   width: blockedWidth/blockedWidthRatio,
                   child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Text("Currently Blocked Ex.", style: TextStyle(color: Colors.white),),
+                    padding: EdgeInsets.all(8 *((blockedDurationHeightRatio-1)/blockedDurationHeightRatio)),
+                    child: Text("Currently Blocked Ex.", style: TextStyle(
+                      color: Colors.white,
+                      fontSize: (blockedDurationHeight * ((blockedDurationHeightRatio-1)/blockedDurationHeightRatio)) * (1/3)
+                      ),
+                    ),
                   ),
                 ),
               ),
