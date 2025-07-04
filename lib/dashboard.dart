@@ -162,7 +162,7 @@ class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserve
             )
           )
         ],
-      )
+      ),
     );
   }
 }

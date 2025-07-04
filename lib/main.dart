@@ -1,12 +1,13 @@
 import 'dart:io';
 import 'package:desktop_opal/dashboard.dart';
+import 'package:desktop_opal/blocksettings.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async{
   const double maxSizeX = 1600;
   const double maxSizeY = 1200;
-  const double minSizeX = 1000;
+  const double minSizeX = 800;
   const double minSizeY = 600;
 
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,7 +45,7 @@ class MainPage extends StatefulWidget {
 
 class MainPageState extends State<MainPage> {
   Widget page = DashboardPage();
-  Text appbarText = Text("Dashboard");
+  Text appbarText = Text("Dashboard", style: TextStyle(color: Colors.white),);
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +53,7 @@ class MainPageState extends State<MainPage> {
       appBar: AppBar(
 
         backgroundColor: Colors.red,
-        toolbarHeight: 40,
+        toolbarHeight: 50,
 
         title: appbarText,
       ),
@@ -96,6 +97,13 @@ class MainPageState extends State<MainPage> {
                 Navigator.pop(context);
               });
             }),
+            CustomListTile(Icon(Icons.stop_circle_rounded, color: Colors.grey[800],), Text("Block Settings"), () {
+              setState(() {
+                page = BlockSettingsPage();
+                appbarText = Text("Block Settings");
+                Navigator.pop(context);
+              });
+            })
           ],
         ),
       ),
