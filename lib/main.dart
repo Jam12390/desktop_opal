@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async{
-  const double maxSizeX = 1200;
-  const double maxSizeY = 800;
-  const double minSizeX = 800;
-  const double minSizeY = 400;
+  const double maxSizeX = 1600;
+  const double maxSizeY = 1200;
+  const double minSizeX = 1000;
+  const double minSizeY = 600;
 
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();

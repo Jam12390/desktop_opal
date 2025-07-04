@@ -20,13 +20,18 @@ class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserve
   //this works well enough to appease me
   //but just dont try to fix this
   //for your own sake
-  late double blockedHeight = View.of(context).physicalSize.height * (2/3) - 91;
+  late double blockedHeight = View.of(context).physicalSize.height - 91;
 
   //height ratio of blocked bar to notifications e.g. 1 : 14 with a height of 600px would give 40px : 560px
   late double blockedDurationHeight = 50;
   final double blockedHeightRatio = 10;
   //height ratio to the blocked textbox to the duration bar e.g. 9 : 1 with a height of 600px and a height ratio of 15 would give 36px : 4px
   final double blockedDurationHeightRatio = 10;
+
+  late TextStyle defaultText = TextStyle(
+    fontSize: (blockedDurationHeight * ((blockedDurationHeightRatio-1)/blockedDurationHeightRatio)) * (1/3),
+    color: Colors.white,
+  );
 
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
@@ -49,7 +54,7 @@ class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserve
     setState(() {
       blockedWidth = currentSize.width;
       print(currentSize.height);
-      blockedHeight = currentSize.height*(2/3) - 88;
+      blockedHeight = currentSize.height - 88;
       blockedDurationHeight = blockedHeight * (1/blockedDurationHeightRatio);
       //dont even ask i have no idea why this needs to be divided by 3 flutter thinks that the width of the window is 1200 when its actually 600
     });
@@ -75,11 +80,7 @@ class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserve
                   width: blockedWidth/blockedWidthRatio,
                   child: Padding(
                     padding: EdgeInsets.all(8 *((blockedDurationHeightRatio-1)/blockedDurationHeightRatio)),
-                    child: Text("Currently Blocked Ex.", style: TextStyle(
-                      color: Colors.white,
-                      fontSize: (blockedDurationHeight * ((blockedDurationHeightRatio-1)/blockedDurationHeightRatio)) * (1/3)
-                      ),
-                    ),
+                    child: Text("Currently Blocked Ex.", style: defaultText),
                   ),
                 ),
               ),
@@ -106,17 +107,38 @@ class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserve
                   ],
                 ),
               ),
-            Padding(
-              padding: EdgeInsets.all(16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[900],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                      color: Colors.grey,
+                    ),
+                    width: blockedWidth/blockedWidthRatio,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("no worky", style: defaultText,),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-                width: blockedWidth/blockedWidthRatio,
-                height: blockedHeight * ((blockedHeightRatio-1)/blockedHeightRatio),
-                child: Text("what the fuck is happening", style: TextStyle(color: Colors.white),),
-              ),
-            )
+              )
+            //Padding(
+            //  padding: EdgeInsets.all(16),
+            //  child: Container(
+            //    decoration: BoxDecoration(
+            //      color: Colors.grey[900],
+            //    ),
+            //    width: blockedWidth/blockedWidthRatio,
+            //    height: blockedHeight * ((blockedHeightRatio-1)/blockedHeightRatio),
+            //    child: Text("Notifications Ex.", style: TextStyle(color: Colors.white),),
+            //  ),
+            //)
             ],
           ),
           Expanded(
@@ -132,7 +154,7 @@ class DashboardPageState extends State<DashboardPage> with WidgetsBindingObserve
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Pie Chart", style: TextStyle(color: Colors.white),)
+                      Text("Pie Chart", style: defaultText,)
                     ],
                   ),
                 ),
