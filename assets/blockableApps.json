@@ -1,0 +1,16 @@
+{
+    "apps": [
+        {
+            "name": "TestApp1",
+            "path": "C:/ABC/TestApp1.app"
+        },
+        {
+            "name": "TestApp2",
+            "path": "C:/ABC/TestApp2.app"
+        },
+        {
+            "name": "miata",
+            "path": "C:/ABC/WAAAAAAAAAAA/miata.app"
+        }
+    ]
+}
