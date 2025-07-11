@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:desktop_opal/dashboard.dart';
 import 'package:desktop_opal/blocksettings.dart';
+import 'package:desktop_opal/reworkedDashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -84,7 +85,7 @@ class MainPageState extends State<MainPage> {
             ),
             CustomListTile(Icon(Icons.dashboard_rounded, color: Colors.grey[800],), Text("Dashboard"), () {
               setState(() {
-                page = DashboardPage();
+                page = Dashboard();
                 appbarText = Text("Dashboard");
                 Navigator.pop(context);
               });
