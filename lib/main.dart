@@ -1,11 +1,35 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:desktop_opal/dashboard.dart';
 import 'package:desktop_opal/blocksettings.dart';
 import 'package:desktop_opal/reworkedDashboard.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
+Map<String, dynamic> settings = Map();
+bool isDarkMode = false;
+
+class AppThemes{
+  static final lightMode = ThemeData(
+    primaryColor: (Colors.grey[500]),
+    brightness: Brightness.light
+  );
+  static final darkMode = ThemeData(
+    primaryColor: Colors.grey[900],
+    brightness: Brightness.dark
+  );
+}
+
 void main() async{
+  Future<Map<String, dynamic>> loadJson(assetName) async {
+    final String rawJson = await rootBundle.loadString("assets/" + assetName);
+    return await jsonDecode(rawJson);
+  }
+
+  settings = await loadJson("settings.json");
+  isDarkMode = settings["darkmode"];
+
   const double maxSizeX = 1600;
   const double maxSizeY = 1200;
   const double minSizeX = 800;
@@ -26,9 +50,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
-      ),
+      theme: AppThemes.lightMode,
+      darkTheme: AppThemes.darkMode,
       home: const MainPage(title: 'Example Text'),
     );
   }
