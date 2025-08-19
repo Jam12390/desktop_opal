@@ -15,7 +15,6 @@ void main() async{
   await windowManager.ensureInitialized();
   if (Platform.isWindows) {
     WindowManager.instance.setMinimumSize(const Size(minSizeX, minSizeY));
-    WindowManager.instance.setMaximumSize(const Size(maxSizeX, maxSizeY));
   }
   runApp(const MyApp());
 }
@@ -45,7 +44,7 @@ class MainPage extends StatefulWidget {
 }
 
 class MainPageState extends State<MainPage> {
-  Widget page = DashboardPage();
+  Widget page = Dashboard();
   Text appbarText = Text("Dashboard", style: TextStyle(color: Colors.white),);
 
   @override
