@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:desktop_opal/dashboard.dart';
 import 'package:desktop_opal/blocksettings.dart';
 import 'package:desktop_opal/reworkedDashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:desktop_opal/funcs.dart' as funcs;
 
 Map<String, dynamic> settings = Map();
+Map<String, bool> detectedApps = Map();
 bool isDarkMode = false;
+Widget page = Dashboard();
 
 class AppThemes{
   static final lightMode = ThemeData(
@@ -22,13 +24,10 @@ class AppThemes{
 }
 
 void main() async{
-  Future<Map<String, dynamic>> loadJson(assetName) async {
-    final String rawJson = await rootBundle.loadString("assets/" + assetName);
-    return await jsonDecode(rawJson);
-  }
-
-  settings = await loadJson("settings.json");
-  isDarkMode = settings["darkmode"];
+  //Future<Map<String, dynamic>> loadJson(assetName) async {
+  //  final String rawJson = await rootBundle.loadString("assets/" + assetName);
+  //  return await jsonDecode(rawJson);
+  //}
 
   const double maxSizeX = 1600;
   const double maxSizeY = 1200;
@@ -40,6 +39,11 @@ void main() async{
   if (Platform.isWindows) {
     WindowManager.instance.setMinimumSize(const Size(minSizeX, minSizeY));
   }
+  settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
+  isDarkMode = settings["darkmode"];
+
+  //final Map<String, dynamic> temp = settings["detectedApps"];
+  //detectedApps = temp.cast<String, bool>();
   runApp(const MyApp());
 }
 
@@ -67,7 +71,6 @@ class MainPage extends StatefulWidget {
 }
 
 class MainPageState extends State<MainPage> {
-  Widget page = Dashboard();
   Text appbarText = Text("Dashboard", style: TextStyle(color: Colors.white),);
 
   @override
@@ -107,7 +110,7 @@ class MainPageState extends State<MainPage> {
             ),
             CustomListTile(Icon(Icons.dashboard_rounded, color: Colors.grey[800],), Text("Dashboard"), () {
               setState(() {
-                page = Dashboard();
+                page = BlockSettingsPage();
                 appbarText = Text("Dashboard");
                 Navigator.pop(context);
               });

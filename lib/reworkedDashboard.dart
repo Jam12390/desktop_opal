@@ -1,5 +1,7 @@
 import 'package:day_night_time_picker/day_night_time_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:desktop_opal/funcs.dart' as funcs;
+import 'package:desktop_opal/main.dart' as mainScript;
 
 class Dashboard extends StatefulWidget{
   const Dashboard({super.key});
@@ -9,15 +11,13 @@ class Dashboard extends StatefulWidget{
 }
 
 class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
-  late Size dimensions;
-
   final BoxDecoration defaultDecor = BoxDecoration(
     color: Colors.grey[900],
     borderRadius: BorderRadius.all(Radius.circular(16))
   );
   late TextStyle defaultText = TextStyle(
     color: Colors.white,
-    fontSize: ((dimensions.height * 0.04) + (dimensions.width * 0.015)) / 2 //0.05 and 0.025 are the weightings that the width and height of the window have in respect to the fontsize
+    fontSize: funcs.recalculateTextSize(context, []) //0.05 and 0.025 are the weightings that the width and height of the window have in respect to the fontsize
   );
 
   Map<String, Map<String, dynamic>> buttonStates = {
@@ -45,7 +45,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   @override
   void didChangeDependencies(){
     super.didChangeDependencies();
-    dimensions = MediaQuery.of(context).size;
     widgetBinding.addObserver(this);
     buttonStates["notBlocked"]?["function"] = openBlockingDialog;
     buttonStates["blocked"]?["function"] = openBreakDialog;
@@ -59,16 +58,14 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
 
   @override
   void didChangeMetrics(){
+    if(!mounted) return;
     setState(() {
-      dimensions = MediaQuery.of(context).size;
       defaultText = TextStyle(
         color: Colors.white,
-        fontSize: ((dimensions.height * 0.04) + (dimensions.width * 0.015)) / 2 //0.05 and 0.025 are the weightings that the width and height of the window have in respect to the fontsize
+        fontSize: funcs.recalculateTextSize(context, []) //0.05 and 0.025 are the weightings that the width and height of the window have in respect to the fontsize
       );
     });
   }
-
-  
 
   @override
   Widget build(BuildContext context){

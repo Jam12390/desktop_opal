@@ -56,7 +56,6 @@ def createAppValues(valuesToCreate : list, debug : bool):
         winreg.SetValueEx(keyPath, str(numberOfValues+valuesAdded+1), 0, winreg.REG_SZ, str(remainingApp))
         try:
             winreg.QueryValueEx(keyPath, str(numberOfValues+valuesAdded+1))
-            print(f"Successfully added {app}.")
         except Exception as e:
             print(f"Addition of {remainingApp} failed with exception {e}")
         valuesAdded += 1
@@ -93,7 +92,7 @@ def deleteKeys(valuesToDelete : list):
     #    except Exception as e:
     #        print(e)
 
-def decreaseFurtherValues(startingValue : int, numberOfValues : int, keyPath : str):
+def decreaseFurtherValues(startingValue : int, numberOfValues : int, keyPath : winreg.HKEYType):
     for upperValue in range(startingValue+1, numberOfValues+1):
         upperValueName = winreg.QueryValueEx(keyPath, str(upperValue))[0]
         winreg.DeleteValue(keyPath, str(upperValue))
@@ -105,3 +104,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#TODO: add app detection on first open + in blocksettings add a floatingactionbutton for refreshing apps or to manually add an app's executable (could look if dart has its own version of regex for detecting .exe at the end)
