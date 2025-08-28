@@ -1,17 +1,20 @@
 import psutil
 import winreg
 import subprocess
+import uvicorn
+import fastapi
 
-def getBlockedAppState(blockedApps : list):
-    blockedAppsState = {app: False for app in blockedApps}
+api = fastapi.FastAPI()
+
+@api.post("/terminateBlockedApps")
+def terminateBlockedApps(blockedApps : list):
     openApps = psutil.process_iter()
     for process in openApps:
         if process.name() in blockedApps:
-            blockedAppsState[process.name] = True
             process.terminate()
-    return blockedAppsState
 
-def createKeys(valuesToCreate : list): #
+
+def createKeys(valuesToCreate : list): #this is redundant - please remove after program finish
     try:
         location = winreg.HKEY_CURRENT_USER
         keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DISALLOWRUN", 0, winreg.KEY_ALL_ACCESS)
@@ -36,6 +39,7 @@ def createKeys(valuesToCreate : list): #
         print(e)
         input("Press enter to exit.")
 
+@api.post("createRegKeys")
 def createAppValues(valuesToCreate : list, debug : bool):
     #try:
     location = winreg.HKEY_CURRENT_USER
@@ -66,6 +70,7 @@ def createAppValues(valuesToCreate : list, debug : bool):
     #    input(f"Process failed with exception {e}, press enter to exit.")
     winreg.CloseKey(keyPath)
 
+@api.post("/deleteRegKeys")
 def deleteKeys(valuesToDelete : list):
     location = winreg.HKEY_CURRENT_USER
     keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DISALLOWRUN", 0, winreg.KEY_ALL_ACCESS)
@@ -98,9 +103,14 @@ def decreaseFurtherValues(startingValue : int, numberOfValues : int, keyPath : w
         winreg.DeleteValue(keyPath, str(upperValue))
         winreg.SetValueEx(keyPath, str(upperValue-1), 0, winreg.REG_SZ, str(upperValueName))
 
+@api.get("/test")
+def test(a : int, b : int):
+    return {"result": a+b}
+
 def main():
-    createAppValues(valuesToCreate=["calc.exe", "chrome.exe"], debug=True)
-    deleteKeys(valuesToDelete=["calc.exe", "chrome.exe"])
+    #createAppValues(valuesToCreate=["calc.exe", "chrome.exe"], debug=True)
+    #deleteKeys(valuesToDelete=["calc.exe", "chrome.exe"])
+    uvicorn.run(api, host="127.0.0.1", port=8000)
 
 if __name__ == "__main__":
     main()

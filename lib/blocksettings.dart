@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:desktop_opal/main.dart' as mainScript;
 
+import 'package:http/http.dart' as http;
+
 class BlockSettingsPage extends StatefulWidget{
   const BlockSettingsPage({super.key});
 
@@ -57,7 +59,6 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
   );
     });
   }
-
   List<String> appEntries = List.from(mainScript.settings["detectedApps"].keys);
   List<bool> appValues = List.from(mainScript.settings["detectedApps"].values);
 
@@ -144,9 +145,10 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: "Apply Settings",
-        onPressed: () => {
-          mainScript.initialSettings = mainScript.settings,
-          settingsFile.writeAsStringSync(jsonEncode(mainScript.settings))
+        onPressed: () async {
+          mainScript.initialSettings = mainScript.settings;
+          settingsFile.writeAsStringSync(jsonEncode(mainScript.settings));
+          var response = await http.get(Uri.parse("http://127.0.0.1:8000/test?a=1&b=2"));
         },
         child: Icon(Icons.save),
       ),
