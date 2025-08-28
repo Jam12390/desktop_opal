@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:nativewrappers/_internal/vm/lib/ffi_native_type_patch.dart';
 
 import 'package:flutter/material.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
@@ -15,6 +14,7 @@ class BlockSettingsPage extends StatefulWidget{
 
 class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindingObserver{
   final List<double> dimensionWeightings = [0.03, 0.0125];
+  final List<double> titleDimensionWeightings = [0.06, 0.025]; //can hardcode for prod
   File settingsFile = File("assets/settings.json");
 
   late TextStyle defaultText = TextStyle(
@@ -25,16 +25,8 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
   late TextStyle titleText = TextStyle(
     color: Colors.white,
     decoration: TextDecoration.underline,
-    fontSize: funcs.recalculateTextSize(context, [0.05, 0.02])
+    fontSize: funcs.recalculateTextSize(context, titleDimensionWeightings),
   );
-
-  final List<String> listDataItems = ["one", "two", "three"];
-  //final List<Icon> listDataIcons = [
-  //  Icon(Icons.one_k),
-  //  Icon(Icons.access_alarm),
-  //  Icon(Icons.baby_changing_station)
-  //];
-  final List<bool> listDataValues = List.filled(3, false);
 
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
@@ -60,7 +52,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
       titleText = TextStyle(
         color: Colors.white,
         decoration: TextDecoration.underline,
-        fontSize: funcs.recalculateTextSize(context, [0.05, 0.02])
+        fontSize: funcs.recalculateTextSize(context, titleDimensionWeightings)
   );
     });
   }
@@ -73,8 +65,14 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
     return Scaffold(
       body: Column(
         children: [
-          Text("Settings:", style: titleText,),
-          Divider(height: 100,),
+          Padding(
+            padding: const EdgeInsets.only(top: 16, left: 16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text("Settings:", style: titleText,)
+            ),
+          ),
+          Divider(height: 50,),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -87,7 +85,21 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                   ),
                   width: MediaQuery.of(context).size.width/2,
                   height: MediaQuery.of(context).size.height,
-                  child: Text("waaaaaaaa", style: defaultText),
+                  child: ListView(
+                    children: [
+                      ListTile(
+                        leading: Icon(Icons.abc),
+                        title: Text("Dark Mode"),
+                        trailing: Switch(
+                          value: mainScript.settings["darkMode"],
+                          onChanged: (value) {
+                            mainScript.settings["darkMode"] = value;
+                            setState(() {});
+                          }
+                        )
+                      )
+                    ],
+                  ),
                 ),
               ),
               Expanded(
@@ -101,7 +113,13 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                     ),
                     child: Column(
                       children: [
-                        Text("Blocked Apps:", style: titleText,),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 8, left: 16),
+                            child: Text("Blocked Apps:", style: titleText,),
+                          )
+                        ),
                         for(int i=0; i < appEntries.length; i++)
                           CheckboxListTile(
                             value: appValues[i], onChanged: (value) {
@@ -124,10 +142,36 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        tooltip: "Apply Settings",
         onPressed: () => {
+          mainScript.initialSettings = mainScript.settings,
           settingsFile.writeAsStringSync(jsonEncode(mainScript.settings))
-        }
+        },
+        child: Icon(Icons.save),
       ),
+    );
+  }
+}
+
+//probably not needed BUT it could be useful for mass changing some list items
+class SettingsListItem extends StatelessWidget{
+  const SettingsListItem({
+    super.key,
+    required this.icon,
+    required this.settingTitle,
+    this.settingSubtitle,
+    required this.trailing,
+  });
+
+  final Icon icon;
+  final String settingTitle;
+  final String? settingSubtitle;
+  final Widget trailing;
+
+  @override
+  Widget build(BuildContext context){
+    return ListTile(
+      
     );
   }
 }

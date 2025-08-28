@@ -1,8 +1,1 @@
-{
-    "darkmode": false,
-    "detectedApps": {
-        "chrome.exe": false,
-        "notepad.exe": false,
-        "firefox.exe": false
-    }
-}
+{"detectedApps":{"chrome.exe":true,"notepad.exe":true,"firefox.exe":false},"darkMode":true}
