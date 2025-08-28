@@ -11,18 +11,14 @@ class Dashboard extends StatefulWidget{
 }
 
 enum ButtonStates{
-  notBlocked(text: Text("Block Now"), icon: Icon(Icons.block), function: null),
-  blocked(text: Text("Take A Break?"), icon: Icon(Icons.pause), function: null);
+  notBlocked(widgets: [Text("Block Now"), Icon(Icons.block)],),
+  blocked(widgets: [Text("Take A Break?"), Icon(Icons.pause)],);
 
   const ButtonStates({
-    required this.text,
-    required this.icon,
-    this.function
+    required this.widgets,
   });
 
-  final Text text;
-  final Icon icon;
-  final Function? function;
+  final List<Widget> widgets;
 }
 
 class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
@@ -35,7 +31,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     fontSize: funcs.recalculateTextSize(context, []) //0.05 and 0.025 are the weightings that the width and height of the window have in respect to the fontsize
   );
 
-  late bool currentlyBlocking = false; //change using a json later
+  late bool currentlyBlocking = true; //dont change using a json later as the glory of enums are here
   bool validDuration = false;
   late DateTime time;
   late bool timeChosen = false;
@@ -48,8 +44,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   void didChangeDependencies(){
     super.didChangeDependencies();
     widgetBinding.addObserver(this);
-    buttonStates["notBlocked"]?["function"] = openBlockingDialog; //TODO: FIX FUNCTION CALLS FOR ENUM
-    buttonStates["blocked"]?["function"] = openBreakDialog;
   }
 
   @override
@@ -131,10 +125,14 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
         ],
       ),
       floatingActionButton: SizedBox(
-        width: 110,
+        width: 130,
         child: FloatingActionButton(
           onPressed: () async {
-            await openBlockingDialog(context);
+            if(currentlyBlocking){
+              await openBreakDialog(); //will probably need context here too
+            } else{
+              await openBlockingDialog(context);
+            }
           },
           backgroundColor: Colors.cyan[400],
           hoverColor: Colors.cyan[700],
@@ -142,10 +140,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
             padding: const EdgeInsets.all(7),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Icon(Icons.block),
-                Text("Block Now")
-              ],
+              children: currentlyBlocking ? ButtonStates.blocked.widgets : ButtonStates.notBlocked.widgets
             ),
           ),
         ),
@@ -284,11 +279,9 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   );
 
   void closeDialog({bool blocked = false, int? duration}){
-    if(blocked){
-      setState(() {
-        currentlyBlocking = true;
-      });
-    }
+    setState(() {
+      currentlyBlocking = blocked;
+    });
     validDuration = false;
     Navigator.pop(context);
   }
