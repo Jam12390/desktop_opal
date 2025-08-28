@@ -44,6 +44,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
 
   @override
   void didChangeMetrics(){
+    if(!mounted) return;
     setState(() {
       defaultText = TextStyle(
         color: Colors.white,
@@ -77,14 +78,14 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.only(right: 16, left: 16, bottom: 16),
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.all(Radius.circular(16)),
                     color: Colors.grey[900],
                   ),
-                  width: MediaQuery.of(context).size.width/2,
-                  height: MediaQuery.of(context).size.height,
+                  width: MediaQuery.of(context).size.width * (2/5),
+                  height: MediaQuery.of(context).size.height - 150,
                   child: ListView(
                     children: [
                       ListTile(
@@ -104,7 +105,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
               ),
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: EdgeInsets.only(left: 16, right: 16, bottom: 16),
                   child: Container(
                     width: MediaQuery.of(context).size.width/2,
                     decoration: BoxDecoration(

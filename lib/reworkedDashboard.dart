@@ -10,6 +10,21 @@ class Dashboard extends StatefulWidget{
   State<Dashboard> createState() => DashboardState();
 }
 
+enum ButtonStates{
+  notBlocked(text: Text("Block Now"), icon: Icon(Icons.block), function: null),
+  blocked(text: Text("Take A Break?"), icon: Icon(Icons.pause), function: null);
+
+  const ButtonStates({
+    required this.text,
+    required this.icon,
+    this.function
+  });
+
+  final Text text;
+  final Icon icon;
+  final Function? function;
+}
+
 class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   final BoxDecoration defaultDecor = BoxDecoration(
     color: Colors.grey[900],
@@ -19,19 +34,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     color: Colors.white,
     fontSize: funcs.recalculateTextSize(context, []) //0.05 and 0.025 are the weightings that the width and height of the window have in respect to the fontsize
   );
-
-  Map<String, Map<String, dynamic>> buttonStates = {
-    "notBlocked": {
-      "text": Text("Block Now"),
-      "icon": Icons.block,
-      "function": null
-    },
-    "blocked": {
-      "text": Text("Take A Break?"),
-      "icon": Icons.pause,
-      "function": null
-    }
-  };
 
   late bool currentlyBlocking = false; //change using a json later
   bool validDuration = false;
@@ -46,7 +48,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   void didChangeDependencies(){
     super.didChangeDependencies();
     widgetBinding.addObserver(this);
-    buttonStates["notBlocked"]?["function"] = openBlockingDialog;
+    buttonStates["notBlocked"]?["function"] = openBlockingDialog; //TODO: FIX FUNCTION CALLS FOR ENUM
     buttonStates["blocked"]?["function"] = openBreakDialog;
   }
 

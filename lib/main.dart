@@ -31,7 +31,9 @@ void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
   if (Platform.isWindows) {
-    WindowManager.instance.setMinimumSize(const Size(minSizeX, minSizeY));
+    //WindowManager.instance.setMinimumSize(const Size(minSizeX, minSizeY));
+    WindowManager.instance.setSize(Size(1200, 600));
+    WindowManager.instance.setResizable(false);
   }
   settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
   initialSettings = settings; //TODO: make a check when leaving blocksettings to check for unsaved data
@@ -59,7 +61,7 @@ class MainPage extends StatefulWidget {
   final String title;
 
   @override
-  State<MainPage> createState() => MainPageState();
+  State<MainPage> createState() => ReworkedMPState();
 }
 
 class MainPageState extends State<MainPage> {
@@ -102,7 +104,7 @@ class MainPageState extends State<MainPage> {
             ),
             CustomListTile(Icon(Icons.dashboard_rounded, color: Colors.grey[800],), Text("Dashboard"), () {
               setState(() {
-                page = BlockSettingsPage();
+                page = Dashboard();
                 appbarText = Text("Dashboard");
                 Navigator.pop(context);
               });
@@ -130,6 +132,50 @@ class MainPageState extends State<MainPage> {
   }
 }
 
+class ReworkedMPState extends State<MainPage>{
+  //Widget page = Dashboard();
+
+  @override
+  Widget build(BuildContext context){
+    return Scaffold(
+      body: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              border: Border(right: BorderSide(color: Color.fromARGB(255, 66, 66, 66), width: 2))
+            ),
+            height: MediaQuery.of(context).size.height,
+            width: 100,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: CustomListTile(Icon(Icons.dashboard_rounded, color: Colors.grey[800],), Text("Dashboard"), () {
+                    setState(() {
+                    page = Dashboard();
+                    });
+                  }),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: CustomListTile(Icon(Icons.settings, color: Colors.grey[800],), Text("Settings"), () {
+                    setState(() {
+                    page = BlockSettingsPage();
+                    });
+                  }),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: page)
+        ],
+      ),
+    );
+  }
+}
+
 class OtherPage extends StatelessWidget{
   const OtherPage({super.key});
 
@@ -152,29 +198,66 @@ class CustomListTile extends StatelessWidget{
 
   @override
   Widget build(BuildContext context){
-    return InkWell(
-      onTap: onTapFunction,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 8, bottom: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 16.0, top: 6, bottom: 6),
-            child: Wrap(
-              spacing: 10,
-                children: [
-                  icon, text
-                ]
+    return AnimatedContainer(
+      width: 100,
+      duration: Duration(milliseconds: 1500),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTapFunction,
+          splashColor: Colors.grey[700],
+          child: Padding(
+            padding: EdgeInsets.only(top: 8, bottom: 8),
+            child: Column(
+              children: [
+                icon,
+                text
+              ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Icon(Icons.arrow_right, color: Colors.grey[800]),
-          )
-        ],
         ),
-      )
+      ),
     );
   }
 }
+
+//class CustomListTile extends StatelessWidget{
+//  final Text text;
+//  final Icon icon;
+//  final VoidCallback onTapFunction;
+//
+//  const CustomListTile(this.icon, this.text, this.onTapFunction, {super.key});
+//
+//  @override
+//  Widget build(BuildContext context){
+//    return InkWell(
+//      onTap: onTapFunction,
+//      splashColor: Colors.orange,
+//      child: Padding(
+//        padding: const EdgeInsets.only(top: 8, bottom: 8),
+//        child: Container(
+//          //height: 60,
+//          child: Column(
+//          children: [
+//            icon,
+//            text
+//            //Padding(
+//            //  padding: const EdgeInsets.all(6),
+//            //  child: Wrap(
+//            //    spacing: 10,
+//            //      children: [
+//            //        icon, text
+//            //      ]
+//            //  ),
+//            //),
+//            //Padding(
+//            //  padding: const EdgeInsets.only(right: 8),
+//            //  child: Icon(Icons.arrow_right, color: Colors.grey[800]),
+//            //)
+//          ],
+//          ),
+//        ),
+//      )
+//    );
+//  }
+//}
