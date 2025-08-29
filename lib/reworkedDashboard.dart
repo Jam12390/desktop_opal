@@ -31,12 +31,14 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     fontSize: funcs.recalculateTextSize(context, []) //0.05 and 0.025 are the weightings that the width and height of the window have in respect to the fontsize
   );
 
-  late bool currentlyBlocking = true; //dont change using a json later as the glory of enums are here
+  late bool currentlyBlocking = false; //dont change using a json later as the glory of enums are here
   bool validDuration = false;
   late DateTime time;
   late bool timeChosen = false;
   late DateTime startingTime;
   //late String timeAsText = "";
+
+  final double defaultWidth = 510;
 
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
@@ -66,62 +68,74 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   @override
   Widget build(BuildContext context){
     return Scaffold(
-      body: Row(
+      body: Column(
         children: [
-          Column(
+          Padding(
+            padding: const EdgeInsets.only(top: 16, left: 16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text("Dashboard", style: funcs.titleText,),
+            ),
+          ),
+          Divider(
+            height: 50,
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 16, bottom: 8, left: 16, right: 8),
-                child: Column(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[900],
-                        borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16))
-                      ),
-                      width: MediaQuery.of(context).size.width/2,
-                      height: 65,
+              Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16, bottom: 8, left: 16, right: 8),
+                    child: Column(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[900],
+                            borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16))
+                          ),
+                          width: defaultWidth,
+                          height: 65,
+                          child: Text("data", style: defaultText,),
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.cyan[400],
+                            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16))
+                          ),
+                          height: 10,
+                          width: defaultWidth,
+                          child: Text("data", style: defaultText,),
+                        )
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 16, left: 16, right: 8),
+                    child: Container(
+                      decoration: defaultDecor,
+                      width: defaultWidth,
+                      height: 308,
+                      //height: MediaQuery.of(context).size.height,
                       child: Text("data", style: defaultText,),
                     ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.cyan[400],
-                        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16))
-                      ),
-                      height: 10,
-                      width: MediaQuery.of(context).size.width/2,
-                      child: Text("data", style: defaultText,),
-                    )
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8, bottom: 16, left: 16, right: 8),
-                  child: Container(
-                    decoration: defaultDecor,
-                    width: MediaQuery.of(context).size.width/2,
-                    height: MediaQuery.of(context).size.height,
-                    child: Text("data", style: defaultText,),
                   ),
-                ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 16, bottom: 16, left: 8, right: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[900],
+                    borderRadius: BorderRadius.all(Radius.circular(16))
+                  ),
+                  width: defaultWidth,
+                  height: 399,
+                  child: Text("data2", style: defaultText,),
+                  ),
               )
             ],
           ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 16, bottom: 16, left: 8, right: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[900],
-                  borderRadius: BorderRadius.all(Radius.circular(16))
-                ),
-                width: MediaQuery.of(context).size.width/2 - 24,
-                height: MediaQuery.of(context).size.height,
-                child: Text("data2", style: defaultText,),
-              ),
-            )
-          )
         ],
       ),
       floatingActionButton: SizedBox(
@@ -131,7 +145,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
             if(currentlyBlocking){
               await openBreakDialog(); //will probably need context here too
             } else{
-              await openBlockingDialog(context);
+              await openBlockDialog(context);
             }
           },
           backgroundColor: Colors.cyan[400],
@@ -145,6 +159,177 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
           ),
         ),
       ),
+    );
+  }
+
+  bool checkIfNextDay(TimeOfDay selectedTime){
+    if(selectedTime.hour < TimeOfDay.now().hour) return true;
+    if(selectedTime.minute < TimeOfDay.now().minute) return true;
+    return false;
+  }
+
+  Future<void> openBlockDialog(BuildContext context) async{
+    late bool isFixedDuration = true;
+    double duration = 5;
+    TimeOfDay selectedTime = TimeOfDay.now();
+    bool timeChosen = false;
+    bool isUnblockable = true;
+
+    List<DropdownMenuEntry> durationValues = List.generate(6, (index) => DropdownMenuEntry(
+      value: index+1 > 3 ? 
+        index-1 * 15 :
+        index+1 * 5,
+      label: '${index+1 > 3 ? 
+        index-1 * 15 :
+        index+1 * 5} mins',
+      ),
+      growable: false
+    );
+
+    return await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState){
+            return Dialog(
+              child: SizedBox(
+                width: 600,
+                height: 300,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Wrap(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("Duration Type:"),
+                              DropdownMenu(
+                                initialSelection: true,
+                                dropdownMenuEntries: [
+                                  DropdownMenuEntry(
+                                    value: true, label: "Fixed Length"
+                                  ),
+                                  DropdownMenuEntry(
+                                    value: false, label: "Until xx:xx"
+                                  )
+                                ],
+                                onSelected: (value) => {
+                                  setState(() {
+                                    isFixedDuration = value ?? true;
+                                    timeChosen = isFixedDuration ? true : false;
+                                  })
+                                }
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("Duration: ${isFixedDuration ? "" : selectedTime}"),
+                                  isFixedDuration ?
+                                  DropdownMenu(
+                                    initialSelection: 5,
+                                    dropdownMenuEntries: durationValues,
+                                    onSelected: (value) => {
+                                      duration = value
+                                    },
+                                  ) :
+                                  TextButton(
+                                    onPressed: () async {
+                                      startingTime = DateTime.now();
+                                      time = DateTime.now();
+                                      selectedTime = await showTimePicker(
+                                        context: context,
+                                        initialTime: TimeOfDay.now()
+                                      ) ?? TimeOfDay.now();
+                                      setState(() {
+                                        timeChosen = true;
+                                        print(time);
+                                      });
+                                    },
+                                    child: Text("Choose Time")
+                                  )
+                                ],
+                              ),
+                              checkIfNextDay(selectedTime) ? Container(
+                                width: MediaQuery.of(context).size.width,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                                  color: const Color.fromARGB(100, 255, 168, 38),
+                                  border: Border(top: BorderSide(color: Colors.orange[600]!, width: 3), bottom: BorderSide(color: Colors.orange[600]!, width: 3)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.warning, color: Colors.orange,),
+                                    Text("Warning: Selected time references tomorrow. Please make sure this is correct.")
+                                  ],
+                                ),
+                              ) :
+                              Container(),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("Breaks Allowed"),
+                              Checkbox(
+                                value: isUnblockable,
+                                onChanged: (value) {
+                                  isUnblockable = value ?? true;
+                                }
+                              )
+                            ],
+                          ),
+                        )
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => {
+                          timeChosen = false,
+                          closeDialog(blocked: false, isFixedDuration: false)
+                          },
+                          child: Text("Nu uh")
+                        ),
+                        TextButton(
+                          onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, duration: duration, endTime: selectedTime, unblockable: isUnblockable),
+                          child: Text("Yuh huh")
+                        )
+                      ],
+                    )
+                  ]
+                ),
+              ),
+              //actions: [
+              //  TextButton(
+              //    onPressed: () => {
+              //      timeChosen = false,
+              //      closeDialog(blocked: false, isFixedDuration: false)
+              //    },
+              //    child: Text("Nu uh")
+              //  ),
+              //  TextButton(
+              //    onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, duration: duration, endTime: selectedTime, unblockable: isUnblockable),
+              //    child: Text("Yuh huh")
+              //  )
+              //],
+            );
+          }
+        );
+      }
     );
   }
 
@@ -181,7 +366,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                               onChangeDateTime: (datetime) => {
                                 setState(() {
                                   time = datetime;
-                                  timeAsText = time.hour.toString() + ':' + time.minute.toString();
+                                  timeAsText = '${time.hour}:${time.minute}';
                                 })
                               }
                             )
@@ -197,12 +382,12 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                 TextButton(
                   onPressed: () => {
                     timeChosen = false,
-                    closeDialog(blocked: false)
+                    closeDialog(blocked: false, isFixedDuration: false)
                   },
                   child: Text("Nu uh")
                 ),
                 TextButton(
-                  onPressed: () => closeDialog(blocked: true),
+                  onPressed: () => closeDialog(blocked: true, isFixedDuration: true),
                   child: Text("Yuh huh")
                 )
               ],
@@ -275,10 +460,19 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
       content: Column(
 
       ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            closeDialog(blocked: false, isFixedDuration: false);
+            currentlyBlocking = false;
+          },
+          child: Text("go back")
+        )
+      ],
     )
   );
 
-  void closeDialog({bool blocked = false, int? duration}){
+  void closeDialog({required bool blocked, required bool isFixedDuration, double? duration, TimeOfDay? endTime, bool? unblockable}){
     setState(() {
       currentlyBlocking = blocked;
     });

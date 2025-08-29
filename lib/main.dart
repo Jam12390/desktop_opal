@@ -133,7 +133,7 @@ class MainPageState extends State<MainPage> {
 }
 
 class ReworkedMPState extends State<MainPage>{
-  //Widget page = Dashboard();
+  Widget page = Dashboard();
 
   @override
   Widget build(BuildContext context){

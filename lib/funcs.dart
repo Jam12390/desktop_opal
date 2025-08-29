@@ -3,6 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+TextStyle defaultText = TextStyle(
+  color: Colors.white, 
+  fontSize: 16
+  //fontSize: funcs.recalculateTextSize(context, dimensionWeightings) //vary this when testing
+);
+
+TextStyle titleText = TextStyle(
+  color: Colors.grey[400],
+  //decoration: TextDecoration.underline,
+  fontSize: 45
+  //fontSize: funcs.recalculateTextSize(context, titleDimensionWeightings),
+);
+
 double recalculateTextSize(BuildContext context, List<double> dimensionWeightings){
   final Size dimensions = MediaQuery.of(context).size;
   if (dimensionWeightings.length == 2){

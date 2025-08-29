@@ -21,13 +21,15 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
 
   late TextStyle defaultText = TextStyle(
     color: Colors.white, 
-    fontSize: funcs.recalculateTextSize(context, dimensionWeightings) //vary this when testing
+    fontSize: 16
+    //fontSize: funcs.recalculateTextSize(context, dimensionWeightings) //vary this when testing
   );
 
   late TextStyle titleText = TextStyle(
-    color: Colors.white,
-    decoration: TextDecoration.underline,
-    fontSize: funcs.recalculateTextSize(context, titleDimensionWeightings),
+    color: Colors.grey[400],
+    //decoration: TextDecoration.underline,
+    fontSize: 45
+    //fontSize: funcs.recalculateTextSize(context, titleDimensionWeightings),
   );
 
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
@@ -44,21 +46,6 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
     super.dispose();
   }
 
-  @override
-  void didChangeMetrics(){
-    if(!mounted) return;
-    setState(() {
-      defaultText = TextStyle(
-        color: Colors.white,
-        fontSize: funcs.recalculateTextSize(context, dimensionWeightings) //0.05 and 0.025 are the weightings that the width and height of the window have in respect to the fontsize
-      );
-      titleText = TextStyle(
-        color: Colors.white,
-        decoration: TextDecoration.underline,
-        fontSize: funcs.recalculateTextSize(context, titleDimensionWeightings)
-  );
-    });
-  }
   List<String> appEntries = List.from(mainScript.settings["detectedApps"].keys);
   List<bool> appValues = List.from(mainScript.settings["detectedApps"].values);
 
@@ -119,7 +106,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                           alignment: Alignment.centerLeft,
                           child: Padding(
                             padding: const EdgeInsets.only(top: 8, left: 16),
-                            child: Text("Blocked Apps:", style: titleText,),
+                            child: Text("Blocked Apps:", style: funcs.titleText,),
                           )
                         ),
                         for(int i=0; i < appEntries.length; i++)
@@ -131,7 +118,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                             },
                             title: Padding(
                               padding: const EdgeInsets.only(top: 8, left: 16),
-                              child: Text(appEntries[i], style: defaultText,)
+                              child: Text(appEntries[i], style: funcs.defaultText,)
                               ),
                             ),
                       ],
@@ -149,6 +136,8 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
           mainScript.initialSettings = mainScript.settings;
           settingsFile.writeAsStringSync(jsonEncode(mainScript.settings));
           var response = await http.get(Uri.parse("http://127.0.0.1:8000/test?a=1&b=2"));
+          var result = jsonDecode(response.body);
+          print(result["result"]);
         },
         child: Icon(Icons.save),
       ),

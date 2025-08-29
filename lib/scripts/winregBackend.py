@@ -6,6 +6,11 @@ import fastapi
 
 api = fastapi.FastAPI()
 
+#apps which cannot be blocked manually
+appBlacklist = [
+    "explorer.exe"
+]
+
 @api.post("/terminateBlockedApps")
 def terminateBlockedApps(blockedApps : list):
     openApps = psutil.process_iter()
