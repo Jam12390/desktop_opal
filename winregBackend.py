@@ -1,8 +1,10 @@
 import psutil
 import winreg
-import subprocess
+import os
 import uvicorn
 import fastapi
+import ctypes, sys
+from pydantic import BaseModel
 
 api = fastapi.FastAPI()
 
@@ -10,6 +12,36 @@ api = fastapi.FastAPI()
 appBlacklist = [
     "explorer.exe"
 ]
+
+class RegRequest(BaseModel):
+    valuesToCreate: list[str]
+
+def checkForAdmin():
+    if ctypes.windll.shell32.IsUserAnAdmin():
+        return True
+    try:
+        params = " ".join([f'"{arg}"' for arg in sys.argv])
+        ctypes.windll.shell32.ShellExecuteW(
+            None, "runas", sys.executable, params, None, 1
+        )
+        return False
+    except:
+        return False
+
+@api.post("/initRegCheck")
+def initialPolicyCheck():
+    location = winreg.HKEY_CURRENT_USER
+    try:
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_SET_VALUE)
+        winreg.CloseKey(keyPath)
+    except OSError as e:
+        print(e)
+        soft = winreg.OpenKey(location, r"SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES", 0, winreg.KEY_WRITE)
+        explorerPolicyLocation = winreg.CreateKey(soft, "EXPLORER")
+        winreg.SetValueEx(explorerPolicyLocation, "DisallowRun", 0, winreg.REG_DWORD, 1)
+        winreg.CreateKey(explorerPolicyLocation, "DisallowRun")
+        winreg.CloseKey(explorerPolicyLocation)
+        winreg.CloseKey(soft)
 
 @api.post("/terminateBlockedApps")
 def terminateBlockedApps(blockedApps : list):
@@ -44,41 +76,45 @@ def createKeys(valuesToCreate : list): #this is redundant - please remove after 
         print(e)
         input("Press enter to exit.")
 
-@api.post("createRegKeys")
-def createAppValues(valuesToCreate : list, debug : bool):
-    #try:
-    location = winreg.HKEY_CURRENT_USER
-    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DISALLOWRUN", 0, winreg.KEY_ALL_ACCESS)
-    numberOfValues = winreg.QueryInfoKey(keyPath)[1]
-    valuesAdded = 0
-    preExistingValues = [
-        winreg.EnumValue(keyPath, i)[1]
-        for i in range(0, numberOfValues)
-    ]
-    toRemove = []
-    for app in valuesToCreate:
-        if app in preExistingValues:
-            toRemove.append(app)
-    for app in toRemove:
-        valuesToCreate.remove(app)
-    for remainingApp in valuesToCreate:
-        winreg.SetValueEx(keyPath, str(numberOfValues+valuesAdded+1), 0, winreg.REG_SZ, str(remainingApp))
-        try:
-            winreg.QueryValueEx(keyPath, str(numberOfValues+valuesAdded+1))
-        except Exception as e:
-            print(f"Addition of {remainingApp} failed with exception {e}")
-        valuesAdded += 1
-    for process in psutil.process_iter():
-        if process.name() == "explorer.exe" and not debug:
-            process.kill()
-    #except Exception as e:
-    #    input(f"Process failed with exception {e}, press enter to exit.")
-    winreg.CloseKey(keyPath)
+@api.post("/createRegKeys")
+def createAppValues(params: RegRequest):
+    valuesToCreate = params.valuesToCreate
+    try:
+        location = winreg.HKEY_CURRENT_USER
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
+        numberOfValues = winreg.QueryInfoKey(keyPath)[1]
+        valuesAdded = 0
+        preExistingValues = [
+            winreg.EnumValue(keyPath, i)[1]
+            for i in range(0, numberOfValues)
+        ]
+        toRemove = []
+        for app in valuesToCreate:
+            if app in preExistingValues:
+                toRemove.append(app)
+        for app in toRemove:
+            valuesToCreate.remove(app)
+        for remainingApp in valuesToCreate:
+            winreg.SetValueEx(keyPath, str(numberOfValues+valuesAdded+1), 0, winreg.REG_SZ, str(remainingApp))
+            try:
+                winreg.QueryValueEx(keyPath, str(numberOfValues+valuesAdded+1))
+            except Exception as e:
+                print(f"Addition of {remainingApp} failed with exception {e}")
+            valuesAdded += 1
+        #for process in psutil.process_iter():
+        #    if process.name() == "explorer.exe" and not debug:
+        #        process.kill()
+        os.system("gpupdate /target:user")
+        winreg.CloseKey(keyPath)
+        return 0
+    except Exception as e:
+        print(e)
+        return -1
 
 @api.post("/deleteRegKeys")
 def deleteKeys(valuesToDelete : list):
     location = winreg.HKEY_CURRENT_USER
-    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DISALLOWRUN", 0, winreg.KEY_ALL_ACCESS)
+    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
     numberOfValues = winreg.QueryInfoKey(keyPath)[1]
     preExistingValues = [
         winreg.EnumValue(keyPath, i)[1]
@@ -112,12 +148,18 @@ def decreaseFurtherValues(startingValue : int, numberOfValues : int, keyPath : w
 def test(a : int, b : int):
     return {"result": a+b}
 
-def main():
-    #createAppValues(valuesToCreate=["calc.exe", "chrome.exe"], debug=True)
-    #deleteKeys(valuesToDelete=["calc.exe", "chrome.exe"])
-    uvicorn.run(api, host="127.0.0.1", port=8000)
+#def main():
+    #deleteKeys(valuesToDelete=["chrome.exe"])
+#    uvicorn.run(api, host="127.0.0.1", port=8000)
+    #initialPolicyCheck()
 
 if __name__ == "__main__":
-    main()
+    if not checkForAdmin():
+        sys.exit(0)
+    #main()
+
+if not checkForAdmin():
+        sys.exit(0)
+uvicorn.run(api, host="127.0.0.1", port=8000)
 
 #TODO: add app detection on first open + in blocksettings add a floatingactionbutton for refreshing apps or to manually add an app's executable (could look if dart has its own version of regex for detecting .exe at the end)

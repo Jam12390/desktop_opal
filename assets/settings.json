@@ -1,1 +1,1 @@
-{"detectedApps":{"chrome.exe":false,"notepad.exe":true,"firefox.exe":true},"darkMode":false}
+{"detectedApps":{"chrome.exe":true,"notepad.exe":true,"firefox.exe":true},"enabledApps":["chrome.exe","notepad.exe"],"excludedApps":["firefox.exe"],"blacklistedApps":{},"darkMode":false}

@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:day_night_time_picker/day_night_time_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:desktop_opal/main.dart' as mainScript;
+import 'package:http/http.dart' as http;
 
 class Dashboard extends StatefulWidget{
   const Dashboard({super.key});
@@ -74,7 +77,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
             padding: const EdgeInsets.only(top: 16, left: 16),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text("Dashboard", style: funcs.titleText,),
+              child: Text("Dashboard:", style: funcs.titleText,),
             ),
           ),
           Divider(
@@ -163,9 +166,16 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   }
 
   bool checkIfNextDay(TimeOfDay selectedTime){
-    if(selectedTime.hour < TimeOfDay.now().hour) return true;
-    if(selectedTime.minute < TimeOfDay.now().minute) return true;
+    TimeOfDay currentTime = TimeOfDay.now();
+    if(selectedTime.hour < currentTime.hour) return true;
+    if(selectedTime.hour == currentTime.hour && selectedTime.minute < currentTime.minute) return true;
     return false;
+  }
+
+  double getDurationInSeconds(TimeOfDay endTime, TimeOfDay? debugStartTime){
+    TimeOfDay currentTime = debugStartTime ?? TimeOfDay.now();
+    if(checkIfNextDay(endTime)) return ((23-currentTime.hour)*60 + (60-currentTime.minute) + endTime.hour*60 + endTime.minute) * 60;
+    return ((endTime.hour - currentTime.hour) * 60 + (endTime.minute - currentTime.minute)) * 60;
   }
 
   Future<void> openBlockDialog(BuildContext context) async{
@@ -177,11 +187,11 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
 
     List<DropdownMenuEntry> durationValues = List.generate(6, (index) => DropdownMenuEntry(
       value: index+1 > 3 ? 
-        index-1 * 15 :
-        index+1 * 5,
+        (index-1) * 15 :
+        (index+1) * 5,
       label: '${index+1 > 3 ? 
-        index-1 * 15 :
-        index+1 * 5} mins',
+        (index-1) * 15 :
+        (index+1) * 5} mins',
       ),
       growable: false
     );
@@ -195,122 +205,136 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
               child: SizedBox(
                 width: 600,
                 height: 300,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Wrap(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text("Duration Type:"),
-                              DropdownMenu(
-                                initialSelection: true,
-                                dropdownMenuEntries: [
-                                  DropdownMenuEntry(
-                                    value: true, label: "Fixed Length"
-                                  ),
-                                  DropdownMenuEntry(
-                                    value: false, label: "Until xx:xx"
-                                  )
-                                ],
-                                onSelected: (value) => {
-                                  setState(() {
-                                    isFixedDuration = value ?? true;
-                                    timeChosen = isFixedDuration ? true : false;
-                                  })
-                                }
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text("Duration: ${isFixedDuration ? "" : selectedTime}"),
-                                  isFixedDuration ?
-                                  DropdownMenu(
-                                    initialSelection: 5,
-                                    dropdownMenuEntries: durationValues,
-                                    onSelected: (value) => {
-                                      duration = value
-                                    },
-                                  ) :
-                                  TextButton(
-                                    onPressed: () async {
-                                      startingTime = DateTime.now();
-                                      time = DateTime.now();
-                                      selectedTime = await showTimePicker(
-                                        context: context,
-                                        initialTime: TimeOfDay.now()
-                                      ) ?? TimeOfDay.now();
-                                      setState(() {
-                                        timeChosen = true;
-                                        print(time);
-                                      });
-                                    },
-                                    child: Text("Choose Time")
-                                  )
-                                ],
-                              ),
-                              checkIfNextDay(selectedTime) ? Container(
-                                width: MediaQuery.of(context).size.width,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                                  color: const Color.fromARGB(100, 255, 168, 38),
-                                  border: Border(top: BorderSide(color: Colors.orange[600]!, width: 3), bottom: BorderSide(color: Colors.orange[600]!, width: 3)),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Wrap(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16, bottom: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("Duration Type:"),
+                                DropdownMenu(
+                                  initialSelection: true,
+                                  dropdownMenuEntries: [
+                                    DropdownMenuEntry(
+                                      value: true, label: "Fixed Length"
+                                    ),
+                                    DropdownMenuEntry(
+                                      value: false, label: "Until xx:xx"
+                                    )
+                                  ],
+                                  onSelected: (value) => {
+                                    setState(() {
+                                      isFixedDuration = value ?? true;
+                                      timeChosen = isFixedDuration ? true : false;
+                                    })
+                                  }
                                 ),
-                                child: Row(
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Icon(Icons.warning, color: Colors.orange,),
-                                    Text("Warning: Selected time references tomorrow. Please make sure this is correct.")
+                                    Text("Duration: ${isFixedDuration ? "" : 'Until ${selectedTime.hour}:${selectedTime.minute}'}"),
+                                    isFixedDuration ?
+                                    DropdownMenu(
+                                      initialSelection: 5,
+                                      dropdownMenuEntries: durationValues,
+                                      onSelected: (value) {
+                                        duration = double.parse(value.toString());
+                                        setState(() {});
+                                      },
+                                    ) :
+                                    TextButton(
+                                      onPressed: () async {
+                                        startingTime = DateTime.now();
+                                        time = DateTime.now();
+                                        selectedTime = await showTimePicker(
+                                          context: context,
+                                          initialTime: TimeOfDay.now()
+                                        ) ?? TimeOfDay.now();
+                                        setState(() {
+                                          timeChosen = true;
+                                          print(time);
+                                        });
+                                      },
+                                      child: Text("${timeChosen ? "Change" : "Choose"} Time")
+                                    )
                                   ],
                                 ),
-                              ) :
-                              Container(),
-                            ],
+                                checkIfNextDay(selectedTime) && !isFixedDuration ? Container(
+                                  width: MediaQuery.of(context).size.width,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                                    color: const Color.fromARGB(100, 255, 168, 38),
+                                    border: Border(top: BorderSide(color: Colors.orange[600]!, width: 3), bottom: BorderSide(color: Colors.orange[600]!, width: 3)),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.warning, color: Colors.orange,),
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 8),
+                                          child: Text("Warning: Selected time references tomorrow. Please make sure this is correct."),
+                                        )
+                                      ],
+                                    ),
+                                  ),
+                                ) :
+                                Container(),
+                              ],
+                            ),
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text("Breaks Allowed"),
-                              Checkbox(
-                                value: isUnblockable,
-                                onChanged: (value) {
-                                  isUnblockable = value ?? true;
-                                }
-                              )
-                            ],
-                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("Breaks Allowed"),
+                                Checkbox(
+                                  value: isUnblockable,
+                                  onChanged: (value) {
+                                    isUnblockable = value ?? true;
+                                    setState(() {});
+                                  }
+                                )
+                              ],
+                            ),
+                          )
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => {
+                              timeChosen = false,
+                              closeDialog(blocked: false, isFixedDuration: false)
+                              },
+                              child: Text("Nu uh")
+                            ),
+                            TextButton(
+                              onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, duration: duration, endTime: selectedTime, unblockable: isUnblockable),
+                              child: Text("Yuh huh")
+                            )
+                          ],
                         )
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => {
-                          timeChosen = false,
-                          closeDialog(blocked: false, isFixedDuration: false)
-                          },
-                          child: Text("Nu uh")
-                        ),
-                        TextButton(
-                          onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, duration: duration, endTime: selectedTime, unblockable: isUnblockable),
-                          child: Text("Yuh huh")
-                        )
-                      ],
-                    )
-                  ]
+                      )
+                    ]
+                  ),
                 ),
               ),
               //actions: [
@@ -472,10 +496,21 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     )
   );
 
-  void closeDialog({required bool blocked, required bool isFixedDuration, double? duration, TimeOfDay? endTime, bool? unblockable}){
+  void closeDialog({required bool blocked, required bool isFixedDuration, double? duration, TimeOfDay? endTime, bool? unblockable}) async{
     setState(() {
       currentlyBlocking = blocked;
     });
+    if(blocked){
+      final response = await http.post(
+        Uri.parse("http://127.0.0.1:8000/createRegKeys"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "valuesToCreate": ["chrome.exe"]
+        })
+      );
+      print(response.body);
+    }
+    print("Blocking: $blocked for fixed ($isFixedDuration) duration $duration or until $endTime for ${getDurationInSeconds(endTime ?? TimeOfDay.now(), null)} seconds. Blockable: $unblockable");
     validDuration = false;
     Navigator.pop(context);
   }

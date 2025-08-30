@@ -14,7 +14,7 @@ class BlockSettingsPage extends StatefulWidget{
   State<BlockSettingsPage> createState() => BlockSettingsPageState();
 }
 
-class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindingObserver{
+class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindingObserver, TickerProviderStateMixin{
   final List<double> dimensionWeightings = [0.03, 0.0125];
   final List<double> titleDimensionWeightings = [0.06, 0.025]; //can hardcode for prod
   File settingsFile = File("assets/settings.json");
@@ -55,10 +55,21 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 16, left: 16),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text("Settings:", style: titleText,)
+            padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Settings:", style: titleText,)
+                ),
+                IconButton(
+                  onPressed: () async{
+                    await openEditDialog(context);
+                  },
+                  icon: Icon(Icons.edit, color: Colors.white,)
+                )
+              ],
             ),
           ),
           Divider(height: 50,),
@@ -110,11 +121,13 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                           )
                         ),
                         for(int i=0; i < appEntries.length; i++)
+                          mainScript.settings["excludedApps"].contains(appEntries[i]) ?
+                          Container() :
                           CheckboxListTile(
                             value: appValues[i], onChanged: (value) {
                               appValues[i] = value!;
                               mainScript.settings["detectedApps"][appEntries[i]] = appValues[i];
-                              setState(() {}); //do shit here for enabling and disabling app blocking
+                              setState(() {}); //update view
                             },
                             title: Padding(
                               padding: const EdgeInsets.only(top: 8, left: 16),
@@ -135,35 +148,158 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
         onPressed: () async {
           mainScript.initialSettings = mainScript.settings;
           settingsFile.writeAsStringSync(jsonEncode(mainScript.settings));
-          var response = await http.get(Uri.parse("http://127.0.0.1:8000/test?a=1&b=2"));
-          var result = jsonDecode(response.body);
-          print(result["result"]);
         },
         child: Icon(Icons.save),
       ),
     );
   }
-}
 
-//probably not needed BUT it could be useful for mass changing some list items
-class SettingsListItem extends StatelessWidget{
-  const SettingsListItem({
-    super.key,
-    required this.icon,
-    required this.settingTitle,
-    this.settingSubtitle,
-    required this.trailing,
-  });
+  Future<void> openEditDialog(BuildContext context) async{
+    List<String> availableApps = appEntries;
 
-  final Icon icon;
-  final String settingTitle;
-  final String? settingSubtitle;
-  final Widget trailing;
+    Map<String, List<dynamic>> apps = {};
+    Map<String, List<dynamic>> excludedApps = {};
 
-  @override
-  Widget build(BuildContext context){
-    return ListTile(
-      
+    TabController controller = TabController(length: 2, vsync: this);
+
+    void Function(void Function())? externalSetState;
+
+    void toggle(bool activate, String app){
+      if(externalSetState != null){
+        externalSetState!(() {
+          if(activate){
+              excludedApps[app]![1] = false;
+              apps[app]![1] = true;
+          } else{
+              print("Deactivated $app");
+              apps[app]![1] = false;
+              excludedApps[app]![1] = true;
+          }
+        });
+      }
+    }
+
+    for(var app in availableApps){
+      apps[app] = [
+        ListTile(
+          title: Text(app),
+          trailing: IconButton(
+            onPressed: () => toggle(false, app),
+            icon: Icon(Icons.close)
+          ),
+        ),
+        true
+      ];
+      excludedApps[app] = [ //TODO: populate excludedApps with SAVED data from settings.json
+        ListTile(
+          title: Text(app),
+          trailing: IconButton(
+            onPressed: () => toggle(true, app),
+            icon: Icon(Icons.check)
+          ),
+        ),
+        false
+      ];
+    }
+    for(var excludedApp in mainScript.settings["excludedApps"]){
+      apps[excludedApp]![1] = false;
+      excludedApps[excludedApp]![1] = true;
+    }
+
+    return await showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState){
+            externalSetState = setState;
+            return Dialog(
+              child: SizedBox(
+                width: 300,
+                height: 400,
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text("Edit Apps"),
+                      ),
+                      TabBar(
+                        controller: controller,
+                        tabs: [
+                          Tab(icon: Icon(Icons.check, color: Colors.white), text: "Active Apps",),
+                          Tab(icon: Icon(Icons.stop_circle, color: Colors.white,), text: "Removed Apps")
+                        ]
+                      ),
+                      Expanded(
+                        child: TabBarView(
+                          controller: controller,
+                          children: [
+                            ListView(
+                              children: [
+                                for(var entry in apps.keys) apps[entry]![1] ? apps[entry]![0] : Container()
+                              ],
+                            ),
+                            ListView(
+                              children: [
+                                for(var entry in excludedApps.keys) excludedApps[entry]![1] ? excludedApps[entry]![0] : Container()
+                              ],
+                            )
+                          ]
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => {
+                                controller.dispose(),
+                                closeDialog(saved: false)
+                              },
+                              child: Text("Cancel")
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: TextButton(
+                                onPressed: () => {
+                                  controller.dispose(),
+                                  closeDialog(saved: true, enabledApps: apps, excludedApps: excludedApps)
+                                },
+                                child: Text("Ok")
+                              ),
+                            )
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+        );
+      }
     );
+  }
+
+  List<String> extractAppsFromMap(Map<String, List<dynamic>> map){
+    List<String> result = [];
+    for(var entry in map.entries){
+      if(entry.value[1]) result.add(entry.key);
+    }
+    return result;
+  }
+
+  void closeDialog({required bool saved, Map<String, List<dynamic>>? enabledApps, Map<String, List<dynamic>>? excludedApps}){
+    if(saved){
+      setState(() {
+        mainScript.settings["excludedApps"] = extractAppsFromMap(excludedApps ?? {});
+        mainScript.settings["enabledApps"] = extractAppsFromMap(enabledApps ?? {});
+      });
+    }
+    Navigator.pop(context);
   }
 }

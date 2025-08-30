@@ -4,6 +4,7 @@ import 'package:desktop_opal/reworkedDashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
+import 'package:process_run/shell.dart';
 
 Map<String, dynamic> settings = {};
 Map<String, dynamic> initialSettings = {};
@@ -22,6 +23,15 @@ class AppThemes{
 }
 
 void main() async{
+  var shell = Shell();
+
+  shell.run('''
+cd C:\\Users\\natha\\OneDrive\\Documents\\Python\\'VSCode Python'\\'Hack Club Stuff'\\desktop_opal\\desktop_opal
+dir
+start winregBackend.py
+''');
+
+  //shell.run("start C:\\Users\\natha\\OneDrive\\Documents\\Python\\'VSCode Python'\\'Hack Club Stuff'\\desktop_opal\\desktop_opal\\lib\\scripts\\winregBackend.py");
 
   const double maxSizeX = 1600;
   const double maxSizeY = 1200;
