@@ -84,7 +84,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                     color: Colors.grey[900],
                   ),
                   width: MediaQuery.of(context).size.width * (2/5),
-                  height: MediaQuery.of(context).size.height - 150,
+                  height: MediaQuery.of(context).size.height - 146,
                   child: ListView(
                     children: [
                       ListTile(
@@ -120,20 +120,45 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                             child: Text("Blocked Apps:", style: funcs.titleText,),
                           )
                         ),
-                        for(int i=0; i < appEntries.length; i++)
-                          mainScript.settings["excludedApps"].contains(appEntries[i]) ?
-                          Container() :
-                          CheckboxListTile(
-                            value: appValues[i], onChanged: (value) {
-                              appValues[i] = value!;
-                              mainScript.settings["detectedApps"][appEntries[i]] = appValues[i];
-                              setState(() {}); //update view
-                            },
-                            title: Padding(
-                              padding: const EdgeInsets.only(top: 8, left: 16),
-                              child: Text(appEntries[i], style: funcs.defaultText,)
-                              ),
-                            ),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height - 258,
+                          child: ListView(
+                            children: [
+                              for(int i=0; i < appEntries.length; i++)
+                                mainScript.settings["excludedApps"].contains(appEntries[i]) ?
+                                Container() :
+                                CheckboxListTile(
+                                  value: appValues[i], onChanged: (value) {
+                                    appValues[i] = value!;
+                                    mainScript.settings["detectedApps"][appEntries[i]] = appValues[i];
+                                    setState(() {}); //update view
+                                  },
+                                  title: Padding(
+                                    padding: const EdgeInsets.only(top: 8, left: 16),
+                                    child: Text(appEntries[i], style: funcs.defaultText,)
+                                    ),
+                                  )
+                              ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () async {
+                            final response = await http.get(Uri.parse("http://127.0.0.1:8000/checkForDesktopExecutables?"));
+                            List<String> executables = jsonDecode(response.body).cast<String>();
+                            setState(() {
+                              for(String executable in executables){
+                                if(!appEntries.contains(executable)){
+                                  mainScript.settings["detectedApps"][executable] = true;
+                                  mainScript.settings["enabledApps"].add(executable);
+                                  appEntries.add(executable);
+                                  appValues.add(true);
+                                }
+                              }
+                            });
+                          },
+                          tooltip: "Auto-detect Executables",
+                          icon: Icon(Icons.restart_alt, color: Colors.white,)
+                        )
                       ],
                     ),
                   ),
@@ -161,6 +186,9 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
     Map<String, List<dynamic>> excludedApps = {};
 
     TabController controller = TabController(length: 2, vsync: this);
+    final TextEditingController textController = TextEditingController();
+
+    final formKey = GlobalKey<FormState>();
 
     void Function(void Function())? externalSetState;
 
@@ -179,28 +207,73 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
       }
     }
 
-    for(var app in availableApps){
-      apps[app] = [
-        ListTile(
-          title: Text(app),
-          trailing: IconButton(
-            onPressed: () => toggle(false, app),
-            icon: Icon(Icons.close)
-          ),
+    void removeExecutable({required bool active, required String executable}){
+      externalSetState!(() {
+        mainScript.settings["detectedApps"].remove(executable);
+        int index = appEntries.indexOf(executable);
+        appEntries.remove(executable);
+        appValues.removeAt(index);
+        apps.remove(executable);
+        excludedApps.remove(executable);
+        if(active){
+          mainScript.settings["enabledApps"].remove(executable);
+        } else{
+          mainScript.settings["excludedApps"].remove(executable);
+        }
+      });
+    }
+
+    void addExecutable({required String executable}){
+      print("run");
+      mainScript.settings["detectedApps"][executable] = true;
+      externalSetState!(() {
+        mainScript.settings["enabledApps"].add(executable);
+        apps[executable] = [
+          editDialogListTile(
+          active: true,
+          title: executable,
+          toggleFunction: () => toggle(false, executable),
+          deleteFunction: () => removeExecutable(active: false, executable: executable)
         ),
         true
       ];
-      excludedApps[app] = [ //TODO: populate excludedApps with SAVED data from settings.json
-        ListTile(
-          title: Text(app),
-          trailing: IconButton(
-            onPressed: () => toggle(true, app),
-            icon: Icon(Icons.check)
-          ),
+      excludedApps[executable] = [
+        editDialogListTile(
+          active: false,
+          title: executable,
+          toggleFunction: () => toggle(true, executable),
+          deleteFunction: () => removeExecutable(active: false, executable: executable)
         ),
         false
-      ];
+        ];
+      });
+      appEntries.add(executable);
+      appValues.add(true);
     }
+
+    apps = {
+      for(var app in availableApps) app: [
+        editDialogListTile(
+          active: true,
+          title: app,
+          toggleFunction: () => toggle(false, app),
+          deleteFunction: () => removeExecutable(active: true, executable: app)
+        ),
+        true
+      ]
+    };
+    excludedApps = {
+      for(var app in availableApps) app: [
+        editDialogListTile(
+          active: false,
+          title: app,
+          toggleFunction: () => toggle(true, app),
+          deleteFunction: () => removeExecutable(active: false, executable: app)
+        ),
+        false
+      ]
+    };
+
     for(var excludedApp in mainScript.settings["excludedApps"]){
       apps[excludedApp]![1] = false;
       excludedApps[excludedApp]![1] = true;
@@ -215,48 +288,108 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
             externalSetState = setState;
             return Dialog(
               child: SizedBox(
-                width: 300,
-                height: 400,
+                width: 400,
+                height: 500,
                 child: Padding(
                   padding: EdgeInsets.all(16),
                   child: Column(
                     children: [
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: Text("Edit Apps"),
+                        child: Text("Edit Apps:", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white, decoration: TextDecoration.underline),),
                       ),
-                      TabBar(
-                        controller: controller,
-                        tabs: [
-                          Tab(icon: Icon(Icons.check, color: Colors.white), text: "Active Apps",),
-                          Tab(icon: Icon(Icons.stop_circle, color: Colors.white,), text: "Removed Apps")
-                        ]
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[900],
+                            borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16))
+                          ),
+                          child: TabBar(
+                            controller: controller,
+                            tabs: [
+                              Tab(icon: Icon(Icons.check, color: Colors.white), text: "Visible Apps",),
+                              Tab(icon: Icon(Icons.stop_circle, color: Colors.white,), text: "Excluded Apps")
+                            ]
+                          ),
+                        ),
                       ),
                       Expanded(
-                        child: TabBarView(
-                          controller: controller,
-                          children: [
-                            ListView(
-                              children: [
-                                for(var entry in apps.keys) apps[entry]![1] ? apps[entry]![0] : Container()
-                              ],
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[900],
+                              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16))
                             ),
-                            ListView(
+                            child: TabBarView(
+                              controller: controller,
                               children: [
-                                for(var entry in excludedApps.keys) excludedApps[entry]![1] ? excludedApps[entry]![0] : Container()
-                              ],
-                            )
-                          ]
+                                ListView(
+                                  shrinkWrap: true,
+                                  children: [
+                                    for(var entry in apps.keys) apps[entry]![1] ? apps[entry]![0] : Container() //[0] - ListTile widget [1] - Enabled?
+                                  ],
+                                ),
+                                ListView(
+                                  shrinkWrap: true,
+                                  children: [
+                                    for(var entry in excludedApps.keys) excludedApps[entry]![1] ? excludedApps[entry]![0] : Container()
+                                  ],
+                                ),
+                              ]
+                            ),
+                          ),
                         ),
                       ),
                       Padding(
-                        padding: EdgeInsets.all(16),
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("Manual Addition:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, decoration: TextDecoration.underline),)
+                        ),
+                      ),
+                      Form(
+                        key: formKey,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: textController,
+                                decoration: InputDecoration(
+                                  border: UnderlineInputBorder(),
+                                  labelText: "Enter executable"
+                                ),
+                                validator: (value) {
+                                  if(value == null || value.isEmpty){
+                                    return "Enter a value";
+                                  } else if(value.substring((value.length-4).clamp(0, value.length), value.length) != ".exe"){
+                                    return "Ensure your executable ends in .exe";
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                if(formKey.currentState!.validate()) {
+                                  addExecutable(executable: textController.text);
+                                };
+                              },
+                              icon: Icon(Icons.arrow_right, color: Colors.white,)
+                            )
+                          ]
+                        )
+                      ),
+                      Padding(
+                        padding: EdgeInsets.only(top: 16),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             TextButton(
                               onPressed: () => {
                                 controller.dispose(),
+                                textController.dispose(),
                                 closeDialog(saved: false)
                               },
                               child: Text("Cancel")
@@ -266,6 +399,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                               child: TextButton(
                                 onPressed: () => {
                                   controller.dispose(),
+                                  textController.dispose(),
                                   closeDialog(saved: true, enabledApps: apps, excludedApps: excludedApps)
                                 },
                                 child: Text("Ok")
@@ -273,7 +407,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                             )
                           ],
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -301,5 +435,43 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
       });
     }
     Navigator.pop(context);
+  }
+}
+
+class editDialogListTile extends StatelessWidget{
+  editDialogListTile({required this.active, required this.title, required this.toggleFunction, required this.deleteFunction});
+
+  final bool active;
+  final String title;
+  final VoidCallback toggleFunction;
+  final VoidCallback deleteFunction;
+  
+  @override
+  Widget build(BuildContext context){
+    return SizedBox(
+        width: MediaQuery.of(context).size.width,
+        height: 50,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(title),
+            ),
+            Wrap(
+              children: [
+                IconButton(
+                  onPressed: deleteFunction,
+                  icon: Icon(Icons.delete_forever, color: Colors.white,)
+                ),
+                IconButton(
+                  onPressed: toggleFunction,
+                  icon: Icon(active ? Icons.close : Icons.check, color: Colors.white),
+                )
+              ],
+            )
+          ],
+        ),
+      );
   }
 }

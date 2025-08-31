@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:day_night_time_picker/day_night_time_picker.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,8 @@ enum ButtonStates{
   final List<Widget> widgets;
 }
 
+bool currentlyBlocking = false;
+
 class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   final BoxDecoration defaultDecor = BoxDecoration(
     color: Colors.grey[900],
@@ -33,8 +36,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     color: Colors.white,
     fontSize: funcs.recalculateTextSize(context, []) //0.05 and 0.025 are the weightings that the width and height of the window have in respect to the fontsize
   );
-
-  late bool currentlyBlocking = false; //dont change using a json later as the glory of enums are here
   bool validDuration = false;
   late DateTime time;
   late bool timeChosen = false;
@@ -178,6 +179,8 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     return ((endTime.hour - currentTime.hour) * 60 + (endTime.minute - currentTime.minute)) * 60;
   }
 
+  bool isWaiting = false;
+
   Future<void> openBlockDialog(BuildContext context) async{
     late bool isFixedDuration = true;
     double duration = 5;
@@ -197,6 +200,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     );
 
     return await showDialog(
+      barrierDismissible: false,
       context: context,
       builder: (context) {
         return StatefulBuilder(
@@ -329,7 +333,8 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                             TextButton(
                               onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, duration: duration, endTime: selectedTime, unblockable: isUnblockable),
                               child: Text("Yuh huh")
-                            )
+                            ),
+                            isWaiting ? CircularProgressIndicator() : Container(),
                           ],
                         )
                       )
@@ -422,62 +427,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     );
   }
 
-  //Future openBlockingDialog() => showDialog(
-  //  context: context, 
-  //  builder: (context) => AlertDialog(
-  //    content: Column(
-  //      children: [
-  //        Row(
-  //          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //          children: [
-  //            Text("DateTime"),
-  //            Text(timeAsText),
-  //            TextButton(
-  //              onPressed: () => {
-  //                startingTime = DateTime.now(),
-  //                time = DateTime.now(),
-  //                setState(() {
-  //                  timeChosen = true;
-  //                  print(time);
-  //                }),
-  //                Navigator.of(context).push(
-  //                  showPicker(
-  //                    value: Time(hour: DateTime.now().hour, minute: DateTime.now().minute+1),
-  //                    //minHour: DateTime.now().hour.toDouble(),
-  //                    //minMinute: time.hour == startingTime.hour ? DateTime.now().minute.toDouble() : 0,
-  //                    is24HrFormat: true,
-  //                    onChange: (p0) {},
-  //                    onChangeDateTime: (datetime) => {
-  //                      setState(() {
-  //                        time = datetime;
-  //                        timeAsText = time.hour.toString() + ' ' + time.minute.toString();
-  //                      })
-  //                    }
-  //                  )
-  //                )
-  //              },
-  //              child: Text("Choose")
-  //            )
-  //          ],
-  //        )
-  //      ],
-  //    ),
-  //    actions: [
-  //      TextButton(
-  //        onPressed: () => {
-  //          timeChosen = false,
-  //          closeDialog(blocked: false)
-  //        },
-  //        child: Text("Nu uh")
-  //      ),
-  //      TextButton(
-  //        onPressed: () => closeDialog(blocked: true),
-  //        child: Text("Yuh huh")
-  //      )
-  //    ],
-  //  )
-  //);
-
   Future openBreakDialog() => showDialog(
     context: context,
     builder: (context) => AlertDialog(
@@ -496,22 +445,36 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     )
   );
 
+  List<String> validateBlockedApps(){
+    List<String> result = [];
+    for(var item in mainScript.settings["detectedApps"].entries){
+      if(item.value && !mainScript.settings["excludedApps"].contains(item.key)) result.add(item.key);
+    }
+    return result;
+  }
+
   void closeDialog({required bool blocked, required bool isFixedDuration, double? duration, TimeOfDay? endTime, bool? unblockable}) async{
     setState(() {
       currentlyBlocking = blocked;
     });
     if(blocked){
+      setState(() {
+        isWaiting = true;
+      });
       final response = await http.post(
         Uri.parse("http://127.0.0.1:8000/createRegKeys"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "valuesToCreate": ["chrome.exe"]
+          "valuesToCreate": validateBlockedApps()
         })
       );
       print(response.body);
+      setState(() {
+        isWaiting = false;
+      });
     }
     print("Blocking: $blocked for fixed ($isFixedDuration) duration $duration or until $endTime for ${getDurationInSeconds(endTime ?? TimeOfDay.now(), null)} seconds. Blockable: $unblockable");
     validDuration = false;
-    Navigator.pop(context);
+    if(mounted) Navigator.pop(context);
   }
 }

@@ -5,6 +5,10 @@ import uvicorn
 import fastapi
 import ctypes, sys
 from pydantic import BaseModel
+import win32com.client
+
+import pythoncom
+import sys, getpass
 
 api = fastapi.FastAPI()
 
@@ -144,6 +148,45 @@ def decreaseFurtherValues(startingValue : int, numberOfValues : int, keyPath : w
         winreg.DeleteValue(keyPath, str(upperValue))
         winreg.SetValueEx(keyPath, str(upperValue-1), 0, winreg.REG_SZ, str(upperValueName))
 
+@api.get("/checkForDesktopExecutables")
+def getAutoExecutables():
+    desktopPath = os.path.join(os.path.join(os.environ["USERPROFILE"]), "OneDrive\\Desktop")
+    publicDesktopPath = "C:\\Users\\Public\\Desktop"
+
+    print("User:", getpass.getuser())
+    print("CWD:", os.getcwd())
+    print("Desktop path:", desktopPath)
+
+    publicExecutables = getExecutables(files=createList(path=publicDesktopPath), path=publicDesktopPath)
+    otherExecutables = getExecutables(files=createList(path=desktopPath), path=desktopPath)
+    combinedExecutables = []
+
+    for i in publicExecutables:
+        combinedExecutables.append(i)
+    for i in otherExecutables:
+        if i not in combinedExecutables:
+            combinedExecutables.append(i)
+    return combinedExecutables
+
+def getExecutables(files: list, path: str):
+    pythoncom.CoInitialize()
+    shell = win32com.client.Dispatch("WScript.Shell")
+    executables = []
+    for file in files:
+        fileName = os.fsdecode(file)
+        if fileName.endswith(".lnk"):
+            shortcut = shell.createShortcut(os.path.join(path, fileName))
+            if ".exe" in shortcut.targetPath:
+                splitPath = shortcut.targetPath.split("\\")
+                executables.append(splitPath[len(splitPath)-1])
+    return executables
+
+def createList(path: str):
+    result = []
+    for file in os.listdir(os.fsencode(path)):
+        result.append(file)
+    return result
+
 @api.get("/test")
 def test(a : int, b : int):
     return {"result": a+b}
@@ -156,7 +199,6 @@ def test(a : int, b : int):
 if __name__ == "__main__":
     if not checkForAdmin():
         sys.exit(0)
-    #main()
 
 if not checkForAdmin():
         sys.exit(0)
