@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'main.dart' as mainScript;
+import 'reworkedDashboard.dart' as dashboard;
+import 'package:http/http.dart' as http;
 
 TextStyle defaultText = TextStyle(
   color: Colors.white, 

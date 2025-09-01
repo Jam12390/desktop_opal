@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 
 import 'package:day_night_time_picker/day_night_time_picker.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,13 @@ enum ButtonStates{
 }
 
 bool currentlyBlocking = false;
+late Timer blockTimer;
+late Timer breakTimer; //TODO: fix late var not being initialised
+bool onBreak = false;
+String timerText = "No active session";
+double timerBarScale = 1;
+
+Function(void Function())? mainSetState;
 
 class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   final BoxDecoration defaultDecor = BoxDecoration(
@@ -40,13 +48,23 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   late DateTime time;
   late bool timeChosen = false;
   late DateTime startingTime;
-  //late String timeAsText = "";
+  
+  //TODO: set these variables before their respective startTimer functions are called
+  int blockDuration = 0;
+  int initBlockDuration = 0;
+  
+  int breakDuration = 0;
+  int initBreakDuration = 0;
+  
+  //bool onBreak = false;
+  //String timerText = "No active session";
+  //double timerBarScale = 1;
 
   final double defaultWidth = 510;
 
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
-  void Function(void Function())? mainSetState;
+  //void Function(void Function())? mainSetState;
 
   @override
   void didChangeDependencies(){
@@ -60,15 +78,84 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     widgetBinding.removeObserver(this);
   }
 
-  @override
-  void didChangeMetrics(){
-    if(!mounted) return;
+  //THIS DOES NOT HANDLE THE INITIAL HTTP.POST TO THE BACKEND. HTTP.POST MANAGEMENT CAN BE FOUND IN OPENBLOCKDIALOG UNDER EXIT BUTTONS
+  void startBlockTimer(int durationInSeconds) { //TODO: make compatible with block setting until xx:xx
+    blockDuration = durationInSeconds;
+    initBlockDuration = durationInSeconds;
+
     setState(() {
-      defaultText = TextStyle(
-        color: Colors.white,
-        fontSize: funcs.recalculateTextSize(context, []) //0.05 and 0.025 are the weightings that the width and height of the window have in respect to the fontsize
-      );
+      currentlyBlocking = true;
     });
+
+    blockTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if(blockDuration <= 0){
+        blockTimer.cancel(); //do post shit here because like aaaaaaaaaaa
+        if(breakTimer.isActive){
+          breakTimer.cancel();
+        }
+        if(mounted) {setState(() {
+          currentlyBlocking = false;
+          timerText = "No active session";
+          timerBarScale = 1;
+        });}
+        http.post(
+          Uri.parse("http://127.0.0.1:8000/toggleBreak"),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({
+            "value": 0
+          })
+        );
+      } else if(blockDuration > 0 && !onBreak){
+        if(mounted){setState(() {
+          blockDuration--;
+          timerText = "Time Remaining: ${formatTimerRemaining(blockDuration)}";
+          timerBarScale = blockDuration / initBlockDuration; //TODO: here
+        });}
+      } else{
+        blockDuration--;
+      }
+    });
+  }
+
+  void startBreakTimer(int durationInSeconds) {
+    breakDuration = durationInSeconds;
+    initBreakDuration = durationInSeconds;
+
+    setState(() {
+      onBreak = true;
+    });
+
+    breakTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if(breakDuration <= 0){
+        breakTimer.cancel(); //do post shit here because like aaaaaaaaaaa
+        if(mounted){setState(() {
+          currentlyBlocking = breakDuration > 0 ? true : false;
+          onBreak = false;
+          if(!currentlyBlocking){
+            timerText = "No active session";
+            timerBarScale = 1;
+          }
+        });}
+      } else if(breakDuration > 0 && onBreak){
+        if(mounted){setState(() {
+          blockDuration--;
+          timerText = "On break for: ${formatTimerRemaining(breakDuration)}";
+          timerBarScale = breakDuration / initBreakDuration; //TODO: here
+        });}
+      } else{
+        breakDuration--;
+      }
+    });
+  }
+
+  String formatTimerRemaining(int timeRemaining){
+    int hours = timeRemaining ~/ 3600;
+    timeRemaining -= hours * 3600;
+    int mins = timeRemaining ~/ 60;
+    timeRemaining -= mins * 60;
+    String returnString = "${hours < 10 ? "0$hours" : hours}:${mins < 10 ? "0$mins" : mins}:${timeRemaining < 10 ? "0$timeRemaining" : timeRemaining}";
+
+    return returnString;
   }
 
   @override
@@ -103,16 +190,31 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                           ),
                           width: defaultWidth,
                           height: 65,
-                          child: Text("data", style: defaultText,),
+                          child: Text(timerText, style: defaultText,),
                         ),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.cyan[400],
-                            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16))
-                          ),
-                          height: 10,
-                          width: defaultWidth,
-                          child: Text("data", style: defaultText,),
+                        Row(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.cyan[400],
+                                borderRadius: currentlyBlocking?
+                                  BorderRadius.only(bottomLeft: Radius.circular(16)) :
+                                  BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16))
+                              ),
+                              height: 10,
+                              width: defaultWidth * timerBarScale,
+                            ),
+                            currentlyBlocking ?
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.cyan[800],
+                                  borderRadius: BorderRadius.only(bottomRight: Radius.circular(16))
+                                ),
+                                width: defaultWidth * (1 - timerBarScale),
+                                height: 10,
+                              ) :
+                              Container()
+                          ],
                         )
                       ],
                     ),
@@ -186,7 +288,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
 
   Future<void> openBlockDialog(BuildContext context) async{
     late bool isFixedDuration = true;
-    double duration = 5;
+    int duration = 5;
     TimeOfDay selectedTime = TimeOfDay.now();
     bool timeChosen = false;
     bool isUnblockable = true;
@@ -258,7 +360,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                                       initialSelection: 5,
                                       dropdownMenuEntries: durationValues,
                                       onSelected: (value) {
-                                        duration = double.parse(value.toString());
+                                        duration = int.parse(value.toString());
                                         setState(() {});
                                       },
                                     ) :
@@ -334,7 +436,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                               child: Text("Nu uh")
                             ),
                             TextButton(
-                              onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, duration: duration, endTime: selectedTime, unblockable: isUnblockable),
+                              onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, fixedDuration: duration, endTime: selectedTime, unblockable: isUnblockable, dashboardSetState: mainSetState),
                               child: Text("Yuh huh")
                             ),
                             isWaiting ? CircularProgressIndicator() : Container(),
@@ -358,71 +460,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
               //    child: Text("Yuh huh")
               //  )
               //],
-            );
-          }
-        );
-      }
-    );
-  }
-
-  Future<void> openBlockingDialog(BuildContext context) async{
-    late String timeAsText = "";
-    return await showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState){
-            return AlertDialog(
-              content: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("DateTime"),
-                      Text(timeAsText),
-                      TextButton(
-                        onPressed: () => {
-                          startingTime = DateTime.now(),
-                          time = DateTime.now(),
-                          setState(() {
-                            timeChosen = true;
-                            print(time);
-                          }),
-                          Navigator.of(context).push(
-                            showPicker(
-                              value: Time(hour: DateTime.now().hour, minute: DateTime.now().minute+1),
-                              //minHour: DateTime.now().hour.toDouble(),
-                              //minMinute: time.hour == startingTime.hour ? DateTime.now().minute.toDouble() : 0,
-                              is24HrFormat: true,
-                              onChange: (p0) {},
-                              onChangeDateTime: (datetime) => {
-                                setState(() {
-                                  time = datetime;
-                                  timeAsText = '${time.hour}:${time.minute}';
-                                })
-                              }
-                            )
-                          )
-                        },
-                        child: Text("Choose")
-                      )
-                    ],
-                  )
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => {
-                    timeChosen = false,
-                    closeDialog(blocked: false, isFixedDuration: false)
-                  },
-                  child: Text("Nu uh")
-                ),
-                TextButton(
-                  onPressed: () => closeDialog(blocked: true, isFixedDuration: true),
-                  child: Text("Yuh huh")
-                )
-              ],
             );
           }
         );
@@ -520,7 +557,9 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     return [validApps, excludedApps];
   }
 
-  void closeDialog({required bool blocked, required bool isFixedDuration, double? duration, TimeOfDay? endTime, bool? unblockable}) async{
+  void closeDialog({required bool blocked, required bool isFixedDuration, int? fixedDuration, TimeOfDay? endTime, bool? unblockable, Function(void Function())? dashboardSetState}) async{
+    int duration = 0;
+
     setState(() {
       currentlyBlocking = blocked;
     });
@@ -531,7 +570,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
         Uri.parse("http://127.0.0.1:8000/deleteRegKeys"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "values": categorisedApps[1]
+          "values": categorisedApps[1] //categorisedApps[validApps, excludedApps]
         })
       );
 
@@ -542,9 +581,26 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
           "values": categorisedApps[0]
         })
       );
-      setState(() {
-        isWaiting = false;
-      });
+      if(!isFixedDuration){
+        DateTime now = DateTime.now();
+        if(checkIfNextDay(endTime!)){
+          duration =
+            (23 - now.hour) * 3600 +
+            (59 - now.minute) * 60 +
+            (60 - now.second) +
+            endTime.hour * 3600 +
+            endTime.minute * 60;
+        } else{
+          duration = 
+            (endTime.hour - now.hour - 1) +
+            (endTime.minute - now.minute - 1) +
+            60 - now.second;
+        }
+      }else{
+        duration = fixedDuration! * 60;
+      }
+      duration = 30;
+      startBlockTimer(duration);
     }
     print("Blocking: $blocked for fixed ($isFixedDuration) duration $duration or until $endTime for ${getDurationInSeconds(endTime ?? TimeOfDay.now(), null)} seconds. Blockable: $unblockable");
     validDuration = false;

@@ -1,17 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:desktop_opal/blocksettings.dart' as blockSettings;
-import 'package:desktop_opal/reworkedDashboard.dart';
+import 'package:desktop_opal/reworkedDashboard.dart' as dashboard;
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:process_run/shell.dart';
+import 'dart:async';
+import 'package:http/http.dart' as http;
 
 Map<String, dynamic> settings = {};
 Map<String, dynamic> initialSettings = {};
 Map<String, dynamic> initSettings = {};
 bool isDarkMode = false;
-Widget page = Dashboard();
+Widget page = dashboard.Dashboard();
 
 class AppThemes{
   static final lightMode = ThemeData(
@@ -118,7 +120,7 @@ class MainPageState extends State<MainPage> {
             ),
             CustomListTile(Icon(Icons.dashboard_rounded, color: Colors.grey[800],), Text("Dashboard"), () {
               setState(() {
-                page = Dashboard();
+                page = dashboard.Dashboard();
                 appbarText = Text("Dashboard");
                 Navigator.pop(context);
               });
@@ -140,7 +142,7 @@ class MainPageState extends State<MainPage> {
 }
 
 class ReworkedMPState extends State<MainPage> {
-  Widget page = Dashboard();
+  Widget page = dashboard.Dashboard();
 
   @override
   Widget build(BuildContext context){
@@ -160,14 +162,12 @@ class ReworkedMPState extends State<MainPage> {
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: CustomListTile(Icon(Icons.dashboard_rounded, color: Colors.grey[800],), Text("Dashboard"), () async {
-                    print(initialSettings == jsonDecode(jsonEncode(settings)));
-                    print("a");
-                    if(initialSettings == settings){
+                    if(jsonEncode(initialSettings) == jsonEncode(settings)){
                       setState(() {
-                        page = Dashboard();
+                        page = dashboard.Dashboard();
                       });
                     } else{
-                      await openUnsavedChangesDialog(context, Dashboard());
+                      await openUnsavedChangesDialog(context, dashboard.Dashboard());
                     }
                   }),
                 ),
