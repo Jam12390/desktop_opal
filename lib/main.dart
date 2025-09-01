@@ -1,5 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
-import 'package:desktop_opal/blocksettings.dart';
+import 'package:desktop_opal/blocksettings.dart' as blockSettings;
 import 'package:desktop_opal/reworkedDashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
@@ -8,6 +9,7 @@ import 'package:process_run/shell.dart';
 
 Map<String, dynamic> settings = {};
 Map<String, dynamic> initialSettings = {};
+Map<String, dynamic> initSettings = {};
 bool isDarkMode = false;
 Widget page = Dashboard();
 
@@ -46,7 +48,7 @@ start winregBackend.py
     WindowManager.instance.setResizable(false);
   }
   settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
-  initialSettings = settings; //TODO: make a check when leaving blocksettings to check for unsaved data
+  initialSettings = jsonDecode(jsonEncode(settings)); //makes a deep copy (unlinked) of the object
 
   runApp(const MyApp());
 }
@@ -76,6 +78,8 @@ class MainPage extends StatefulWidget {
 
 class MainPageState extends State<MainPage> {
   Text appbarText = Text("Dashboard", style: TextStyle(color: Colors.white),);
+
+  File settingsFile = File("assets/settings.json");
 
   @override
   Widget build(BuildContext context) {
@@ -120,16 +124,9 @@ class MainPageState extends State<MainPage> {
               });
               }
             ),
-            CustomListTile(Icon(Icons.piano_rounded), Text("ow"), () {
-              setState(() {
-                page = OtherPage();
-                appbarText = Text("Other page");
-                Navigator.pop(context);
-              });
-            }),
             CustomListTile(Icon(Icons.stop_circle_rounded, color: Colors.grey[800],), Text("Block Settings"), () {
               setState(() {
-                page = BlockSettingsPage();
+                page = blockSettings.BlockSettingsPage();
                 appbarText = Text("Block Settings");
                 Navigator.pop(context);
               });
@@ -142,7 +139,7 @@ class MainPageState extends State<MainPage> {
   }
 }
 
-class ReworkedMPState extends State<MainPage>{
+class ReworkedMPState extends State<MainPage> {
   Widget page = Dashboard();
 
   @override
@@ -162,17 +159,23 @@ class ReworkedMPState extends State<MainPage>{
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: CustomListTile(Icon(Icons.dashboard_rounded, color: Colors.grey[800],), Text("Dashboard"), () {
-                    setState(() {
-                    page = Dashboard();
-                    });
+                  child: CustomListTile(Icon(Icons.dashboard_rounded, color: Colors.grey[800],), Text("Dashboard"), () async {
+                    print(initialSettings == jsonDecode(jsonEncode(settings)));
+                    print("a");
+                    if(initialSettings == settings){
+                      setState(() {
+                        page = Dashboard();
+                      });
+                    } else{
+                      await openUnsavedChangesDialog(context, Dashboard());
+                    }
                   }),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: CustomListTile(Icon(Icons.settings, color: Colors.grey[800],), Text("Settings"), () {
                     setState(() {
-                    page = BlockSettingsPage();
+                      page = blockSettings.BlockSettingsPage();
                     });
                   }),
                 ),
@@ -184,17 +187,59 @@ class ReworkedMPState extends State<MainPage>{
       ),
     );
   }
-}
 
-class OtherPage extends StatelessWidget{
-  const OtherPage({super.key});
+  Future<void> openUnsavedChangesDialog(BuildContext context, Widget attemptedTravelPage) async{
+    File settingsFile = File("assets/settings.json");
 
-  @override
-  Widget build(BuildContext context){
-    return Scaffold(
-      body: Center(
-        child: Text("something happend"),
-      ),
+    return await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: SizedBox(
+              width: 300,
+              height: 100,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("You have unsaved changes! Would you like to save them now?"),
+                  Wrap(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              setState(() {
+                                settings = jsonDecode(jsonEncode(initialSettings));
+                                page = attemptedTravelPage;
+                              });
+                            },
+                            child: Text("Discard Changes")
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              setState(() {
+                                initialSettings = jsonDecode(jsonEncode(settings));
+                                page = attemptedTravelPage;
+                              });
+                              settingsFile.writeAsStringSync(jsonEncode(settings));
+                            },
+                            child: Text("Save Changes")
+                          )
+                        ],
+                      )
+                    ],
+                  )
+                ],
+              ),
+            ),
+          ),
+        );
+      }
     );
   }
 }

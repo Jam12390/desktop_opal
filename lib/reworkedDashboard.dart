@@ -46,6 +46,8 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
 
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
+  void Function(void Function())? mainSetState;
+
   @override
   void didChangeDependencies(){
     super.didChangeDependencies();
@@ -71,6 +73,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
 
   @override
   Widget build(BuildContext context){
+    mainSetState = setState;
     return Scaffold(
       body: Column(
         children: [
@@ -147,7 +150,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
         child: FloatingActionButton(
           onPressed: () async {
             if(currentlyBlocking){
-              await openBreakDialog(); //will probably need context here too
+              await openBreakDialog(context); //will probably need context here too
             } else{
               await openBlockDialog(context);
             }
@@ -427,54 +430,123 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     );
   }
 
-  Future openBreakDialog() => showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      content: Column(
+  Future<void> openBreakDialog(BuildContext context) async{
+    double duration;
 
+    List<DropdownMenuEntry> durationValues = List.generate(6, (index) => DropdownMenuEntry(
+      value: index+1 > 3 ? 
+        (index-1) * 15 :
+        (index+1) * 5,
+      label: '${index+1 > 3 ? 
+        (index-1) * 15 :
+        (index+1) * 5} mins',
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            closeDialog(blocked: false, isFixedDuration: false);
-            currentlyBlocking = false;
-          },
-          child: Text("go back")
-        )
-      ],
-    )
-  );
+      growable: false
+    );
 
-  List<String> validateBlockedApps(){
-    List<String> result = [];
+    return await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              child: SizedBox(
+                width: 600,
+                height: 300,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("Break Length:"),
+                          DropdownMenu(
+                            dropdownMenuEntries: durationValues,
+                            onSelected: (value) {
+                              duration = double.parse(value.toString());
+                              setState(() {});
+                            },
+                          )
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => closeDialog(blocked: false, isFixedDuration: true),
+                            child: Text("Cancel")
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              await http.post(
+                                Uri.parse("http://127.0.0.1:8000/toggleBreak"),
+                                headers: {"Content-Type": "application/json"},
+                                body: jsonEncode({
+                                  "value": 0
+                                })
+                              );
+                              //TODO: create second timer and setState it to replace the current block timer (can probably use mainSetState)
+                            },
+                            child: Text("Ok")
+                          )
+                        ],
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            );
+          }
+        );
+      }
+    );
+  }
+
+  List<List<String>> validateBlockedApps(){
+    List<String> validApps = [];
+    List<String> excludedApps = [];
     for(var item in mainScript.settings["detectedApps"].entries){
-      if(item.value && !mainScript.settings["excludedApps"].contains(item.key)) result.add(item.key);
+      if(item.value && !mainScript.settings["excludedApps"].contains(item.key)) {
+        validApps.add(item.key);
+      } else{
+        excludedApps.add(item.key);
+      }
     }
-    return result;
+    return [validApps, excludedApps];
   }
 
   void closeDialog({required bool blocked, required bool isFixedDuration, double? duration, TimeOfDay? endTime, bool? unblockable}) async{
     setState(() {
       currentlyBlocking = blocked;
     });
+    if(mounted) Navigator.pop(context);
     if(blocked){
-      setState(() {
-        isWaiting = true;
-      });
-      final response = await http.post(
+      final List<List<String>> categorisedApps = validateBlockedApps();
+      await http.post(
+        Uri.parse("http://127.0.0.1:8000/deleteRegKeys"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "values": categorisedApps[1]
+        })
+      );
+
+      await http.post(
         Uri.parse("http://127.0.0.1:8000/createRegKeys"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "valuesToCreate": validateBlockedApps()
+          "values": categorisedApps[0]
         })
       );
-      print(response.body);
       setState(() {
         isWaiting = false;
       });
     }
     print("Blocking: $blocked for fixed ($isFixedDuration) duration $duration or until $endTime for ${getDurationInSeconds(endTime ?? TimeOfDay.now(), null)} seconds. Blockable: $unblockable");
     validDuration = false;
-    if(mounted) Navigator.pop(context);
   }
 }

@@ -56,20 +56,9 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Settings:", style: titleText,)
-                ),
-                IconButton(
-                  onPressed: () async{
-                    await openEditDialog(context);
-                  },
-                  icon: Icon(Icons.edit, color: Colors.white,)
-                )
-              ],
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text("Settings:", style: titleText,)
             ),
           ),
           Divider(height: 50,),
@@ -113,15 +102,26 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                     ),
                     child: Column(
                       children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 8, left: 16),
-                            child: Text("Blocked Apps:", style: funcs.titleText,),
-                          )
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text("Blocked Apps:", style: TextStyle(color: Colors.grey[400], fontSize: 35)),
+                              ),
+                              IconButton(
+                                onPressed: () async{
+                                  await openEditDialog(context);
+                                },
+                                icon: Icon(Icons.edit, color: Colors.white,)
+                              )
+                            ],
+                          ),
                         ),
                         SizedBox(
-                          height: MediaQuery.of(context).size.height - 258,
+                          height: MediaQuery.of(context).size.height - 268,
                           child: ListView(
                             children: [
                               for(int i=0; i < appEntries.length; i++)
@@ -141,23 +141,41 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                               ],
                           ),
                         ),
-                        IconButton(
-                          onPressed: () async {
-                            final response = await http.get(Uri.parse("http://127.0.0.1:8000/checkForDesktopExecutables?"));
-                            List<String> executables = jsonDecode(response.body).cast<String>();
-                            setState(() {
-                              for(String executable in executables){
-                                if(!appEntries.contains(executable)){
-                                  mainScript.settings["detectedApps"][executable] = true;
-                                  mainScript.settings["enabledApps"].add(executable);
-                                  appEntries.add(executable);
-                                  appValues.add(true);
-                                }
-                              }
-                            });
-                          },
-                          tooltip: "Auto-detect Executables",
-                          icon: Icon(Icons.restart_alt, color: Colors.white,)
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Wrap(
+                                children: [
+                                  IconButton(
+                                    onPressed: () async {
+                                      final response = await http.get(Uri.parse("http://127.0.0.1:8000/checkForDesktopExecutables?"));
+                                      List<String> executables = jsonDecode(response.body).cast<String>();
+                                      setState(() {
+                                        for(String executable in executables){
+                                          if(!appEntries.contains(executable)){
+                                            mainScript.settings["detectedApps"][executable] = true;
+                                            mainScript.settings["enabledApps"].add(executable);
+                                            appEntries.add(executable);
+                                            appValues.add(true);
+                                          }
+                                        }
+                                      });
+                                    },
+                                    tooltip: "Auto-detect Executables",
+                                    icon: Icon(Icons.restart_alt, color: Colors.white,)
+                                  ),
+                                  IconButton(
+                                    onPressed: () async {
+                                      await openConfirmDialog(context);
+                                    },
+                                    icon: Icon(Icons.delete_forever, color: Colors.white,)
+                                  )
+                                ]
+                              ),
+                            ],
+                          ),
                         )
                       ],
                     ),
@@ -176,6 +194,56 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
         },
         child: Icon(Icons.save),
       ),
+    );
+  }
+
+  Future<void> openConfirmDialog(BuildContext context) async { //TODO: end any existing block session when the button is pressed
+    return await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          child: SizedBox(
+            height: 100,
+            width: 400,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 15, left: 20, right: 10, bottom: 10),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Text("Are you sure you want to delete ALL app entries?")
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => closeDialog(saved: false),
+                        child: Text("No")
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          setState(() {
+                            mainScript.settings["detectedApps"] = {};
+                            mainScript.settings["enabledApps"] = [];
+                            mainScript.settings["excludedApps"] = [];
+                            appEntries = [];
+                            appValues = [];
+                          });
+                          await http.post(
+                            Uri.parse("http://127.0.0.1:8000/wipeEntries")
+                          );
+                        },
+                        child: Text("Yes")
+                      )
+                    ],
+                  )
+                ],
+              ),
+            ),
+          ),
+        );
+      }
     );
   }
 
@@ -296,7 +364,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                     children: [
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: Text("Edit Apps:", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white, decoration: TextDecoration.underline),),
+                        child: Text("Edit Apps", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),),
                       ),
                       Padding(
                         padding: const EdgeInsets.only(top: 12),

@@ -18,7 +18,10 @@ appBlacklist = [
 ]
 
 class RegRequest(BaseModel):
-    valuesToCreate: list[str]
+    values: list[str]
+
+class BreakRequest(BaseModel):
+    value: int
 
 def checkForAdmin():
     if ctypes.windll.shell32.IsUserAnAdmin():
@@ -54,6 +57,12 @@ def terminateBlockedApps(blockedApps : list):
         if process.name() in blockedApps:
             process.terminate()
 
+@api.post("/toggleBreak")
+def toggleBreak(params: BreakRequest):
+    location = winreg.HKEY_CURRENT_USER
+    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_WRITE)
+    winreg.SetValueEx(keyPath, "DisallowRun", 0, winreg.REG_DWORD, params.value)
+    os.system("gpupdate /target:user")
 
 def createKeys(valuesToCreate : list): #this is redundant - please remove after program finish
     try:
@@ -82,10 +91,12 @@ def createKeys(valuesToCreate : list): #this is redundant - please remove after 
 
 @api.post("/createRegKeys")
 def createAppValues(params: RegRequest):
-    valuesToCreate = params.valuesToCreate
+    valuesToCreate = params.values
     try:
         location = winreg.HKEY_CURRENT_USER
-        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_ALL_ACCESS)
+        winreg.SetValueEx(keyPath, "DisallowRun", 0, winreg.REG_DWORD, 1)
+        keyPath = winreg.CreateKey(keyPath, "DisallowRun")
         numberOfValues = winreg.QueryInfoKey(keyPath)[1]
         valuesAdded = 0
         preExistingValues = [
@@ -116,7 +127,8 @@ def createAppValues(params: RegRequest):
         return -1
 
 @api.post("/deleteRegKeys")
-def deleteKeys(valuesToDelete : list):
+def deleteKeys(params: RegRequest):
+    valuesToDelete = params.values
     location = winreg.HKEY_CURRENT_USER
     keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
     numberOfValues = winreg.QueryInfoKey(keyPath)[1]
@@ -147,6 +159,19 @@ def decreaseFurtherValues(startingValue : int, numberOfValues : int, keyPath : w
         upperValueName = winreg.QueryValueEx(keyPath, str(upperValue))[0]
         winreg.DeleteValue(keyPath, str(upperValue))
         winreg.SetValueEx(keyPath, str(upperValue-1), 0, winreg.REG_SZ, str(upperValueName))
+
+@api.post("/wipeEntries")
+def wipeEntries():
+    try:
+        location = winreg.HKEY_CURRENT_USER
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
+        numberOfValues = winreg.QueryInfoKey(keyPath)[1]
+        for key in range(1, numberOfValues):
+            winreg.DeleteKey(keyPath, str(key))
+        return 0
+    except:
+        return -1
+
 
 @api.get("/checkForDesktopExecutables")
 def getAutoExecutables():
