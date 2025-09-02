@@ -30,3 +30,26 @@ double recalculateTextSize(BuildContext context, List<double> dimensionWeighting
 Future<Map<String, type>> loadJsonFromFile<type>(String fileName) async{
   return jsonDecode(await rootBundle.loadString("assets/$fileName")) as Map<String, type>;
 }
+
+String formatTimerRemaining(int timeRemaining){
+  int hours = timeRemaining ~/ 3600;
+  timeRemaining -= hours * 3600;
+  int mins = timeRemaining ~/ 60;
+  timeRemaining -= mins * 60;
+  String returnString = "${hours < 10 ? "0$hours" : hours}:${mins < 10 ? "0$mins" : mins}:${timeRemaining < 10 ? "0$timeRemaining" : timeRemaining}";
+
+  return returnString;
+}
+
+List<List<String>> validateBlockedApps(){
+  List<String> validApps = [];
+  List<String> excludedApps = [];
+  for(var item in mainScript.settings["detectedApps"].entries){
+    if(item.value && !mainScript.settings["excludedApps"].contains(item.key)) {
+      validApps.add(item.key);
+    } else{
+      excludedApps.add(item.key);
+    }
+  }
+  return [validApps, excludedApps];
+}

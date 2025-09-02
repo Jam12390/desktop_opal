@@ -17,11 +17,14 @@ appBlacklist = [
     "explorer.exe"
 ]
 
+keysBuffer = []
+
 class RegRequest(BaseModel):
     values: list[str]
 
 class BreakRequest(BaseModel):
-    value: int
+    goingOnBreak: bool
+    keys: list[str]
 
 def checkForAdmin():
     if ctypes.windll.shell32.IsUserAnAdmin():
@@ -59,10 +62,12 @@ def terminateBlockedApps(blockedApps : list):
 
 @api.post("/toggleBreak")
 def toggleBreak(params: BreakRequest):
-    location = winreg.HKEY_CURRENT_USER
-    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_WRITE)
-    winreg.SetValueEx(keyPath, "DisallowRun", 0, winreg.REG_DWORD, params.value)
-    os.system("gpupdate /target:user")
+    global keysBuffer
+    if params.goingOnBreak: #if we are going on break
+        keysBuffer = params.keys #save existing keys
+        deleteKeys(params=RegRequest(values=params.keys))
+    else:
+        createAppValues(params=RegRequest(values=keysBuffer))
 
 def createKeys(valuesToCreate : list): #this is redundant - please remove after program finish
     try:
@@ -216,17 +221,14 @@ def createList(path: str):
 def test(a : int, b : int):
     return {"result": a+b}
 
-#def main():
-    #deleteKeys(valuesToDelete=["chrome.exe"])
-#    uvicorn.run(api, host="127.0.0.1", port=8000)
-    #initialPolicyCheck()
+def main():
+    pass
 
 if __name__ == "__main__":
     if not checkForAdmin():
         sys.exit(0)
+    main()
 
 if not checkForAdmin():
-        sys.exit(0)
+    sys.exit(0)
 uvicorn.run(api, host="127.0.0.1", port=8000)
-
-#TODO: add app detection on first open + in blocksettings add a floatingactionbutton for refreshing apps or to manually add an app's executable (could look if dart has its own version of regex for detecting .exe at the end)

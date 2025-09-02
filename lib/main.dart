@@ -11,9 +11,10 @@ import 'package:http/http.dart' as http;
 
 Map<String, dynamic> settings = {};
 Map<String, dynamic> initialSettings = {};
-Map<String, dynamic> initSettings = {};
 bool isDarkMode = false;
 Widget page = dashboard.Dashboard();
+
+Map<String, double> history = {};
 
 class AppThemes{
   static final lightMode = ThemeData(
@@ -35,13 +36,6 @@ dir
 start winregBackend.py
 ''');
 
-  //shell.run("start C:\\Users\\natha\\OneDrive\\Documents\\Python\\'VSCode Python'\\'Hack Club Stuff'\\desktop_opal\\desktop_opal\\lib\\scripts\\winregBackend.py");
-
-  const double maxSizeX = 1600;
-  const double maxSizeY = 1200;
-  const double minSizeX = 800;
-  const double minSizeY = 600;
-
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
   if (Platform.isWindows) {
@@ -51,8 +45,11 @@ start winregBackend.py
   }
   settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
   initialSettings = jsonDecode(jsonEncode(settings)); //makes a deep copy (unlinked) of the object
+  history = (await funcs.loadJsonFromFile<dynamic>("barchartdata.json")).map((key, value) => MapEntry(key, value as double),);
 
-  runApp(const MyApp());
+  runApp(
+    const MyApp()
+  );
 }
 
 class MyApp extends StatelessWidget {

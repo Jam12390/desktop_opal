@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:desktop_opal/main.dart' as mainScript;
+import 'package:desktop_opal/reworkedDashboard.dart' as dashboard;
 
 import 'package:http/http.dart' as http;
 

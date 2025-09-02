@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:desktop_opal/main.dart' as mainScript;
 import 'package:http/http.dart' as http;
+import 'package:fl_chart/fl_chart.dart';
 
 class Dashboard extends StatefulWidget{
   const Dashboard({super.key});
@@ -27,11 +28,194 @@ enum ButtonStates{
 }
 
 bool currentlyBlocking = false;
-late Timer blockTimer;
-late Timer breakTimer; //TODO: fix late var not being initialised
+Timer? breakTimer;
 bool onBreak = false;
 String timerText = "No active session";
 double timerBarScale = 1;
+int blockDuration = 0;
+int initBlockDuration = 0;
+int breakDuration = 0;
+int initBreakDuration = 0;
+
+List<String> barDataKeys = List.from(mainScript.history.keys);
+List<double> barDataValues = List.from(mainScript.history.values);
+int isTouchedIndex = -1;
+
+class HistoryBarChart extends StatefulWidget{
+  HistoryBarChart({super.key});
+
+
+  State<HistoryBarChart> createState() => HistoryState();
+}
+
+class HistoryState extends State<HistoryBarChart>{
+  int touchedIndex = -1;
+
+  @override
+  Widget build(BuildContext context){
+    return BarChart(
+      BarChartData(
+        barGroups: List.generate(mainScript.history.length, (index) => createBar(x: index, toY: barDataValues[index], width: 22)),
+        alignment: BarChartAlignment.spaceEvenly,
+        titlesData: FlTitlesData(
+          show: true,
+          leftTitles: const AxisTitles(
+            sideTitles: SideTitles(
+              reservedSize: 25,
+              showTitles: true
+            )
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              reservedSize: 25,
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                return Text(barDataKeys[value.toInt()]);
+              },
+            )
+          ),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false))
+        ),
+        backgroundColor: Colors.grey[800],
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                "${barDataKeys[groupIndex]}:\n${rod.toY.toString()} hours",
+                funcs.defaultText
+              );
+            },
+          ),
+          touchCallback: (FlTouchEvent event, response) {
+            if(!event.isInterestedForInteractions || response == null || response.spot == null){
+              setState(() {
+                touchedIndex = -1;
+              });
+            } else{
+              setState(() {
+                touchedIndex = response.spot!.touchedBarGroupIndex;
+              });
+            }
+          },
+        ),
+        maxY: 24,
+        minY: 0
+      )
+    );
+  }
+
+  BarChartGroupData createBar({required int x, required double toY, required double width}){
+  bool isTouched = x == touchedIndex;
+
+  return BarChartGroupData(
+    x: x,
+    barRods: [
+      BarChartRodData(
+        toY: toY,
+        width: width,
+        borderRadius: BorderRadius.only(topLeft: Radius.circular(6), topRight: Radius.circular(6)),
+        color: isTouched ? Colors.cyan[700] : Colors.cyan
+      ),
+    ],
+    showingTooltipIndicators: []
+  );
+}
+}
+
+class BlockTimer with ChangeNotifier{
+
+  Timer? timer;
+  int? duration;
+
+  void startTimer(){
+    int initDuration = duration!;
+    duration = duration!;
+    timerText = "Time Remaining: ${funcs.formatTimerRemaining(duration!)}";
+    //notifyListeners();
+    timer = Timer.periodic(Duration(seconds: 1), (value) {
+      print("dont even");
+      duration = duration!-1;
+      if(duration! <= 0){
+        endTimer();
+        notifyListeners();
+      } else if(!onBreak){
+        updateValues(initDuration);
+        notifyListeners();
+      }
+    });
+  }
+
+  void updateValues(int initDuration){
+    timerText = "Time Remaining: ${funcs.formatTimerRemaining(duration!)}";
+    timerBarScale = duration! / initDuration;
+  }
+
+  void endTimer(){
+    timer!.cancel();
+    timerText = "No Active Session";
+    timerBarScale = 1;
+    currentlyBlocking = false;
+    onBreak = false;
+    http.post(
+      Uri.parse("http://127.0.0.1:8000/toggleBreak"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "goingOnBreak": true,
+        "keys": funcs.validateBlockedApps()[0]
+      })
+    );
+  }
+}
+
+class BreakTimer with ChangeNotifier{
+
+  Timer? timer;
+  int? duration;
+
+  void startTimer(){
+    onBreak = true;
+    int initDuration = duration!;
+    timerText = "On Break For: ${funcs.formatTimerRemaining(duration!)}";
+    timer = Timer.periodic(Duration(seconds: 1), (value) {
+      print("think about it");
+      duration = duration! - 1;
+      if(duration! <= 0){
+        endTimer();
+        notifyListeners();
+      } else{
+        updateValues(initDuration);
+        notifyListeners();
+      }
+    });
+  }
+
+  void updateValues(int initDuration){
+    if(!currentlyBlocking) {
+      endTimer();
+      return;
+    }
+    timerText = "On Break For: ${funcs.formatTimerRemaining(duration!)}";
+    timerBarScale = duration! / initDuration;
+  }
+
+  void endTimer(){
+    timer!.cancel();
+    timerText = "No Active Session";
+    onBreak = false;
+    http.post(
+      Uri.parse("http://127.0.0.1:8000/toggleBreak"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "value": currentlyBlocking ? true : false,
+        "goingOnBreak": funcs.validateBlockedApps()[0]
+      })
+    );
+  }
+}
+
+BlockTimer blockTim = BlockTimer();
+BreakTimer breakTim = BreakTimer();
 
 Function(void Function())? mainSetState;
 
@@ -46,21 +230,14 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   );
   bool validDuration = false;
   late DateTime time;
-  late bool timeChosen = false;
+  bool timeChosen = false;
   late DateTime startingTime;
-  
-  //TODO: set these variables before their respective startTimer functions are called
-  int blockDuration = 0;
-  int initBlockDuration = 0;
-  
-  int breakDuration = 0;
-  int initBreakDuration = 0;
   
   //bool onBreak = false;
   //String timerText = "No active session";
   //double timerBarScale = 1;
 
-  final double defaultWidth = 510;
+  final double defaultWidth = 450;
 
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
@@ -78,86 +255,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     widgetBinding.removeObserver(this);
   }
 
-  //THIS DOES NOT HANDLE THE INITIAL HTTP.POST TO THE BACKEND. HTTP.POST MANAGEMENT CAN BE FOUND IN OPENBLOCKDIALOG UNDER EXIT BUTTONS
-  void startBlockTimer(int durationInSeconds) { //TODO: make compatible with block setting until xx:xx
-    blockDuration = durationInSeconds;
-    initBlockDuration = durationInSeconds;
-
-    setState(() {
-      currentlyBlocking = true;
-    });
-
-    blockTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-      if(blockDuration <= 0){
-        blockTimer.cancel(); //do post shit here because like aaaaaaaaaaa
-        if(breakTimer.isActive){
-          breakTimer.cancel();
-        }
-        if(mounted) {setState(() {
-          currentlyBlocking = false;
-          timerText = "No active session";
-          timerBarScale = 1;
-        });}
-        http.post(
-          Uri.parse("http://127.0.0.1:8000/toggleBreak"),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({
-            "value": 0
-          })
-        );
-      } else if(blockDuration > 0 && !onBreak){
-        if(mounted){setState(() {
-          blockDuration--;
-          timerText = "Time Remaining: ${formatTimerRemaining(blockDuration)}";
-          timerBarScale = blockDuration / initBlockDuration; //TODO: here
-        });}
-      } else{
-        blockDuration--;
-      }
-    });
-  }
-
-  void startBreakTimer(int durationInSeconds) {
-    breakDuration = durationInSeconds;
-    initBreakDuration = durationInSeconds;
-
-    setState(() {
-      onBreak = true;
-    });
-
-    breakTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-      if(breakDuration <= 0){
-        breakTimer.cancel(); //do post shit here because like aaaaaaaaaaa
-        if(mounted){setState(() {
-          currentlyBlocking = breakDuration > 0 ? true : false;
-          onBreak = false;
-          if(!currentlyBlocking){
-            timerText = "No active session";
-            timerBarScale = 1;
-          }
-        });}
-      } else if(breakDuration > 0 && onBreak){
-        if(mounted){setState(() {
-          blockDuration--;
-          timerText = "On break for: ${formatTimerRemaining(breakDuration)}";
-          timerBarScale = breakDuration / initBreakDuration; //TODO: here
-        });}
-      } else{
-        breakDuration--;
-      }
-    });
-  }
-
-  String formatTimerRemaining(int timeRemaining){
-    int hours = timeRemaining ~/ 3600;
-    timeRemaining -= hours * 3600;
-    int mins = timeRemaining ~/ 60;
-    timeRemaining -= mins * 60;
-    String returnString = "${hours < 10 ? "0$hours" : hours}:${mins < 10 ? "0$mins" : mins}:${timeRemaining < 10 ? "0$timeRemaining" : timeRemaining}";
-
-    return returnString;
-  }
-
   @override
   Widget build(BuildContext context){
     mainSetState = setState;
@@ -165,10 +262,19 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 16, left: 16),
+            padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text("Dashboard:", style: funcs.titleText,),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("Dashboard:", style: funcs.titleText,),
+                  FilledButton(
+                    onPressed: () {print("what");},
+                    child: Text("what")
+                  )
+                ],
+              ),
             ),
           ),
           Divider(
@@ -181,42 +287,53 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 16, bottom: 8, left: 16, right: 8),
-                    child: Column(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey[900],
-                            borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16))
-                          ),
-                          width: defaultWidth,
-                          height: 65,
-                          child: Text(timerText, style: defaultText,),
-                        ),
-                        Row(
+                    child: ListenableBuilder(
+                      listenable: Listenable.merge([blockTim, breakTim]),
+                      builder: (context, Widget? child) {
+                        return Column(
                           children: [
                             Container(
                               decoration: BoxDecoration(
-                                color: Colors.cyan[400],
-                                borderRadius: currentlyBlocking?
-                                  BorderRadius.only(bottomLeft: Radius.circular(16)) :
-                                  BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16))
+                                color: Colors.grey[900],
+                                borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16))
                               ),
-                              height: 10,
-                              width: defaultWidth * timerBarScale,
+                              width: defaultWidth,
+                              height: 65,
+                              child: Align(
+                                alignment: Alignment.topLeft,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 10, top: 10),
+                                  child: Text(timerText, style: defaultText,),
+                                )
+                              ),
                             ),
-                            currentlyBlocking ?
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.cyan[800],
-                                  borderRadius: BorderRadius.only(bottomRight: Radius.circular(16))
+                            Row(
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.cyan[400],
+                                    borderRadius: currentlyBlocking?
+                                      BorderRadius.only(bottomLeft: Radius.circular(16)) :
+                                      BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16))
+                                  ),
+                                  height: 10,
+                                  width: defaultWidth * timerBarScale,
                                 ),
-                                width: defaultWidth * (1 - timerBarScale),
-                                height: 10,
-                              ) :
-                              Container()
+                                currentlyBlocking ?
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.cyan[800],
+                                      borderRadius: BorderRadius.only(bottomRight: Radius.circular(16))
+                                    ),
+                                    width: defaultWidth * (1 - timerBarScale),
+                                    height: 10,
+                                  ) :
+                                  Container()
+                              ],
+                            )
                           ],
-                        )
-                      ],
+                        );
+                      }
                     ),
                   ),
                   Padding(
@@ -225,8 +342,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                       decoration: defaultDecor,
                       width: defaultWidth,
                       height: 308,
-                      //height: MediaQuery.of(context).size.height,
-                      child: Text("data", style: defaultText,),
+                      child: Text("data2", style: defaultText,),
                     ),
                   ),
                 ],
@@ -238,9 +354,12 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                     color: Colors.grey[900],
                     borderRadius: BorderRadius.all(Radius.circular(16))
                   ),
-                  width: defaultWidth,
+                  width: 586,
                   height: 399,
-                  child: Text("data2", style: defaultText,),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 28, bottom: 14, right: 16, left: 6),
+                    child: HistoryBarChart(),
+                  ),
                   ),
               )
             ],
@@ -249,23 +368,28 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
       ),
       floatingActionButton: SizedBox(
         width: 130,
-        child: FloatingActionButton(
-          onPressed: () async {
-            if(currentlyBlocking){
-              await openBreakDialog(context); //will probably need context here too
-            } else{
-              await openBlockDialog(context);
-            }
-          },
-          backgroundColor: Colors.cyan[400],
-          hoverColor: Colors.cyan[700],
-          child: Padding(
-            padding: const EdgeInsets.all(7),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: currentlyBlocking ? ButtonStates.blocked.widgets : ButtonStates.notBlocked.widgets
-            ),
-          ),
+        child: ListenableBuilder(
+          listenable: Listenable.merge([blockTim, breakTim]),
+          builder: (context, Widget? child) {
+            return FloatingActionButton(
+              onPressed: () async {
+                if(currentlyBlocking){
+                  await openBreakDialog(context); //will probably need context here too
+                } else{
+                  await openBlockDialog(context);
+                }
+              },
+              backgroundColor: Colors.cyan[400],
+              hoverColor: Colors.cyan[700],
+              child: Padding(
+                padding: const EdgeInsets.all(7),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: currentlyBlocking ? ButtonStates.blocked.widgets : ButtonStates.notBlocked.widgets
+                ),
+              ),
+            );
+          }
         ),
       ),
     );
@@ -436,7 +560,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                               child: Text("Nu uh")
                             ),
                             TextButton(
-                              onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, fixedDuration: duration, endTime: selectedTime, unblockable: isUnblockable, dashboardSetState: mainSetState),
+                              onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, fixedDuration: duration, endTime: selectedTime, unblockable: isUnblockable),
                               child: Text("Yuh huh")
                             ),
                             isWaiting ? CircularProgressIndicator() : Container(),
@@ -468,7 +592,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   }
 
   Future<void> openBreakDialog(BuildContext context) async{
-    double duration;
+    double duration = 5;
 
     List<DropdownMenuEntry> durationValues = List.generate(6, (index) => DropdownMenuEntry(
       value: index+1 > 3 ? 
@@ -488,17 +612,18 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
           builder: (context, setState) {
             return Dialog(
               child: SizedBox(
-                width: 600,
-                height: 300,
+                width: 400,
+                height: 128,
                 child: Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      padding: const EdgeInsets.all(16),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text("Break Length:"),
                           DropdownMenu(
+                            initialSelection: durationValues[0],
                             dropdownMenuEntries: durationValues,
                             onSelected: (value) {
                               duration = double.parse(value.toString());
@@ -524,9 +649,12 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                                 Uri.parse("http://127.0.0.1:8000/toggleBreak"),
                                 headers: {"Content-Type": "application/json"},
                                 body: jsonEncode({
-                                  "value": 0
+                                  "goingOnBreak": true,
+                                  "keys": funcs.validateBlockedApps()[0]
                                 })
                               );
+                              breakTim.duration = 15;
+                              breakTim.startTimer();
                               //TODO: create second timer and setState it to replace the current block timer (can probably use mainSetState)
                             },
                             child: Text("Ok")
@@ -544,28 +672,14 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     );
   }
 
-  List<List<String>> validateBlockedApps(){
-    List<String> validApps = [];
-    List<String> excludedApps = [];
-    for(var item in mainScript.settings["detectedApps"].entries){
-      if(item.value && !mainScript.settings["excludedApps"].contains(item.key)) {
-        validApps.add(item.key);
-      } else{
-        excludedApps.add(item.key);
-      }
-    }
-    return [validApps, excludedApps];
-  }
-
-  void closeDialog({required bool blocked, required bool isFixedDuration, int? fixedDuration, TimeOfDay? endTime, bool? unblockable, Function(void Function())? dashboardSetState}) async{
+  void closeDialog({required bool blocked, required bool isFixedDuration, int? fixedDuration, TimeOfDay? endTime, bool? unblockable}) async{
     int duration = 0;
-
-    setState(() {
-      currentlyBlocking = blocked;
-    });
     if(mounted) Navigator.pop(context);
     if(blocked){
-      final List<List<String>> categorisedApps = validateBlockedApps();
+      setState(() {
+        currentlyBlocking = true;
+      });
+      final List<List<String>> categorisedApps = funcs.validateBlockedApps();
       await http.post(
         Uri.parse("http://127.0.0.1:8000/deleteRegKeys"),
         headers: {"Content-Type": "application/json"},
@@ -599,8 +713,9 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
       }else{
         duration = fixedDuration! * 60;
       }
-      duration = 30;
-      startBlockTimer(duration);
+      //duration = 15;
+      blockTim.duration = duration;
+      blockTim.startTimer();
     }
     print("Blocking: $blocked for fixed ($isFixedDuration) duration $duration or until $endTime for ${getDurationInSeconds(endTime ?? TimeOfDay.now(), null)} seconds. Blockable: $unblockable");
     validDuration = false;
