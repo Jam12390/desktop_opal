@@ -17,8 +17,20 @@ class Dashboard extends StatefulWidget{
 }
 
 enum ButtonStates{
-  notBlocked(widgets: [Text("Block Now"), Icon(Icons.block)],),
-  blocked(widgets: [Text("Take A Break?"), Icon(Icons.pause)],);
+  notBlocked(widgets: [
+    Align(alignment: Alignment.centerLeft, child: Padding(
+      padding: EdgeInsets.only(bottom: 3),
+      child: Text("Block Now"),
+    )),
+    Align(alignment: Alignment.centerRight, child: Icon(Icons.block))
+  ],),
+  blocked(widgets: [
+    Align(alignment: Alignment.centerLeft, child: Padding(
+      padding: EdgeInsets.only(bottom: 3),
+      child: Text("Take A Break?"),
+    )),
+    Align(alignment: Alignment.centerRight, child: Icon(Icons.pause))],
+  );
 
   const ButtonStates({
     required this.widgets,
@@ -40,6 +52,7 @@ int initBreakDuration = 0;
 List<String> barDataKeys = List.from(mainScript.history.keys);
 List<double> barDataValues = List.from(mainScript.history.values);
 int isTouchedIndex = -1;
+double timeToAdd = 0;
 
 class HistoryBarChart extends StatefulWidget{
   HistoryBarChart({super.key});
@@ -135,6 +148,7 @@ class BlockTimer with ChangeNotifier{
     //notifyListeners();
     timer = Timer.periodic(Duration(seconds: 1), (value) {
       print("dont even");
+      timeToAdd++; //add time to timertoadd
       duration = duration!-1;
       if(duration! <= 0){
         endTimer();
@@ -157,6 +171,13 @@ class BlockTimer with ChangeNotifier{
     timerBarScale = 1;
     currentlyBlocking = false;
     onBreak = false;
+    String formattedDate = funcs.formatDateToJson(null);
+    if(mainScript.history[formattedDate] != null){
+      mainScript.history[formattedDate] = double.parse((mainScript.history[formattedDate]! + timeToAdd/3600).toStringAsFixed(2));
+    } else{
+      mainScript.history[formattedDate] = double.parse((timeToAdd/3600).toStringAsFixed(2));
+    }
+    timeToAdd = 0;
     http.post(
       Uri.parse("http://127.0.0.1:8000/toggleBreak"),
       headers: {"Content-Type": "application/json"},
@@ -269,9 +290,27 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text("Dashboard:", style: funcs.titleText,),
-                  FilledButton(
-                    onPressed: () {print("what");},
-                    child: Text("what")
+                  SizedBox(
+                    width: 175,
+                    height: 64,
+                    child: ListenableBuilder(
+                      listenable: Listenable.merge([blockTim, breakTim]),
+                      builder: (context, Widget? child) {
+                        return ElevatedButton(
+                          onPressed: () async {
+                            if(currentlyBlocking){
+                              await openBreakDialog(context); //will probably need context here too
+                            } else{
+                              await openBlockDialog(context);
+                            }
+                          },
+                          child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: currentlyBlocking ? ButtonStates.blocked.widgets : ButtonStates.notBlocked.widgets
+                            ),
+                        );
+                      }
+                    ),
                   )
                 ],
               ),
@@ -358,39 +397,26 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                   height: 399,
                   child: Padding(
                     padding: const EdgeInsets.only(top: 28, bottom: 14, right: 16, left: 6),
-                    child: HistoryBarChart(),
+                    child: Column(
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("Statistics:"),
+                        ),
+                        ListenableBuilder(
+                          listenable: Listenable.merge([blockTim]),
+                          builder: (context, child) {
+                            return HistoryBarChart();
+                          }
+                        ), //TODO: update hours with new block info
+                      ],
+                    ),
                   ),
                   ),
               )
             ],
           ),
         ],
-      ),
-      floatingActionButton: SizedBox(
-        width: 130,
-        child: ListenableBuilder(
-          listenable: Listenable.merge([blockTim, breakTim]),
-          builder: (context, Widget? child) {
-            return FloatingActionButton(
-              onPressed: () async {
-                if(currentlyBlocking){
-                  await openBreakDialog(context); //will probably need context here too
-                } else{
-                  await openBlockDialog(context);
-                }
-              },
-              backgroundColor: Colors.cyan[400],
-              hoverColor: Colors.cyan[700],
-              child: Padding(
-                padding: const EdgeInsets.all(7),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: currentlyBlocking ? ButtonStates.blocked.widgets : ButtonStates.notBlocked.widgets
-                ),
-              ),
-            );
-          }
-        ),
       ),
     );
   }

@@ -15,6 +15,7 @@ bool isDarkMode = false;
 Widget page = dashboard.Dashboard();
 
 Map<String, double> history = {};
+Map<String, double> historyBuffer = {};
 
 class AppThemes{
   static final lightMode = ThemeData(
@@ -25,6 +26,35 @@ class AppThemes{
     primaryColor: Colors.grey[900],
     brightness: Brightness.dark
   );
+}
+
+DateTime decodeString(String date){
+  if(date.length != 8){
+    List<String> splitDate = date.split("/");
+    date = "${splitDate[0].length==2 ? splitDate[0] : "0${splitDate[0]}"}/${splitDate[1].length==2 ? splitDate[1] : "0${splitDate[1]}"}/${splitDate[2].length==2 ? splitDate[2] : "0${splitDate[2]}"}";
+  }
+  return DateTime(int.parse("20${date.substring(6, 8)}"), int.parse(date.substring(3, 5)), int.parse(date.substring(0, 2)));
+}
+
+void fillGaps(String date1, String date2, {bool finalAddition = false}){
+  DateTime date1Decoded = decodeString(date1);
+  DateTime date2Decoded = decodeString(date2);
+
+  while(date1Decoded.add(Duration(days: 1)) != date2Decoded){
+    String buffer = funcs.formatDateToJson(date1Decoded.add(Duration(days: 1)));
+    buffer = verifyFormat(buffer);
+    historyBuffer.addAll({buffer : 0});
+    date1Decoded = date1Decoded.add(Duration(days: 1));
+  }
+  if(finalAddition) historyBuffer.addAll({verifyFormat(funcs.formatDateToJson(date2Decoded)) : 0});
+}
+
+String verifyFormat(String toCheck){
+  if(toCheck.length > 8){
+    toCheck = toCheck.substring(1, 11);
+    toCheck = "${toCheck.substring(8, 10)}/${toCheck.substring(5, 7)}/${toCheck.substring(2, 4)}";
+  }
+  return toCheck;
 }
 
 void main() async{
@@ -46,6 +76,20 @@ start winregBackend.py
   settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
   initialSettings = jsonDecode(jsonEncode(settings)); //makes a deep copy (unlinked) of the object
   history = (await funcs.loadJsonFromFile<dynamic>("barchartdata.json")).map((key, value) => MapEntry(key, value as double),);
+
+  List<String> dayKeys = List.from(history.keys);
+  String formattedDateTimeNow = funcs.formatDateToJson(null);
+  for(int index=0; index<dayKeys.length; index++){
+    if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){
+      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+    } else if(index != dayKeys.length-1 || dayKeys.length == 1){
+      DateTime temp = DateTime.now();
+      fillGaps(dayKeys[index], "${temp.day}/${temp.month}/${temp.year.toString().substring(2, 4)}", finalAddition: true);
+    }else {
+      fillGaps(dayKeys[index], dayKeys[index+1]);
+      //TODO: IT WORKS
+    }
+  }
 
   runApp(
     const MyApp()

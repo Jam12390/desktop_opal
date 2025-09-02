@@ -53,3 +53,9 @@ List<List<String>> validateBlockedApps(){
   }
   return [validApps, excludedApps];
 }
+
+String formatDateToJson(DateTime? toEncode){
+  toEncode ??= DateTime.now();
+  String result = "${toEncode.day < 10 ? "0$toEncode.day" : toEncode.day}/${toEncode.month < 10 ? "0${toEncode.month}" : toEncode.month}/${toEncode.year.toString().substring(2, 4)}";
+  return result;
+}
