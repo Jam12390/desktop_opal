@@ -64,7 +64,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                   child: ListView(
                     children: [
                       ListTile(
-                        leading: Icon(Icons.abc),
+                        leading: Icon(Icons.dark_mode),
                         title: Text("Dark Mode"),
                         subtitle: Text("(Coming... at one point)"),
                         trailing: Switch(
@@ -116,13 +116,15 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                                 onPressed: () async{
                                   await openEditDialog(context);
                                 },
+                                tooltip: "Edit Apps",
                                 icon: Icon(Icons.edit, color: Colors.white,)
                               )
                             ],
                           ),
                         ),
+                        Divider(height: 10,),
                         SizedBox(
-                          height: MediaQuery.of(context).size.height - 268,
+                          height: MediaQuery.of(context).size.height - 288,
                           child: ListView(
                             children: [
                               for(int i=0; i < appEntries.length; i++)
@@ -142,6 +144,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                               ],
                           ),
                         ),
+                        Divider(height: 10,),
                         Padding(
                           padding: const EdgeInsets.all(12),
                           child: Row(
@@ -171,6 +174,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                                     onPressed: () async {
                                       await openConfirmDialog(context);
                                     },
+                                    tooltip: "Delete ALL App Entries",
                                     icon: Icon(Icons.delete_forever, color: Colors.white,)
                                   )
                                 ]

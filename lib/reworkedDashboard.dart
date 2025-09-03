@@ -16,33 +16,44 @@ class Dashboard extends StatefulWidget{
 }
 
 enum ButtonStates{
-  notBlocked(widgets: [
-    Align(alignment: Alignment.centerLeft, child: Padding(
-      padding: EdgeInsets.only(bottom: 3),
-      child: Text("Block Now"),
-    )),
-    Align(alignment: Alignment.centerRight, child: Icon(Icons.block))
-  ],),
-  blocked(widgets: [
-    Align(alignment: Alignment.centerLeft, child: Padding(
-      padding: EdgeInsets.only(bottom: 3),
-      child: Text("Take A Break?"),
-    )),
-    Align(alignment: Alignment.centerRight, child: Icon(Icons.pause))],
+  notBlocked(
+    widgets: [
+      Align(alignment: Alignment.centerLeft, child: Padding(
+        padding: EdgeInsets.only(bottom: 3),
+        child: Text("Block Now"),
+      )),
+      Align(alignment: Alignment.centerRight, child: Icon(Icons.block))
+    ],
+    buttonWidth: 150
   ),
-  onBreak(widgets: [
-    Align(alignment: Alignment.centerLeft, child: Padding(
-      padding: EdgeInsets.only(bottom: 3),
-      child: Text("Continue Blocking"),
-    )),
-    Align(alignment: Alignment.centerRight, child: Icon(Icons.play_arrow)),
-  ]);
+  blocked(
+    widgets: [
+      Align(alignment: Alignment.centerLeft, child: Padding(
+        padding: EdgeInsets.only(bottom: 3),
+        child: Text("Take A Break?"),
+      )),
+      Align(alignment: Alignment.centerRight, child: Icon(Icons.pause))
+    ],
+    buttonWidth: 175
+  ),
+  onBreak(
+    widgets: [
+      Align(alignment: Alignment.centerLeft, child: Padding(
+        padding: EdgeInsets.only(bottom: 3),
+        child: Text("Continue Blocking"),
+      )),
+      Align(alignment: Alignment.centerRight, child: Icon(Icons.play_arrow)),
+    ],
+    buttonWidth: 185
+  );
 
   const ButtonStates({
     required this.widgets,
+    required this.buttonWidth
   });
 
   final List<Widget> widgets;
+  final double buttonWidth;
 }
 
 bool currentlyBlocking = false;
@@ -269,7 +280,12 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   final double defaultWidth = 450;
 
   final SnackBar denyBlock = SnackBar(
-    content: Text("Blocking has been disabled for this session.", style: funcs.defaultText),
+    content: Text("Blocking has been disabled for this session.", style: funcs.snackBarText),
+    backgroundColor: Colors.grey[900],
+  );
+
+  final SnackBar noEntries = SnackBar(
+    content: Text("No apps registered to block.", style: funcs.snackBarText),
     backgroundColor: Colors.grey[900],
   );
 
@@ -290,6 +306,17 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     mainSetState = null;
   }
 
+  bool checkForBlockEntries(){
+    if(mainScript.settings["enabledApps"].length > 0){
+      for(String app in mainScript.settings["enabledApps"]){
+        if(mainScript.settings["detectedApps"][app]){
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context){
     mainSetState = setState;
@@ -305,7 +332,10 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                 children: [
                   Text("Dashboard:", style: funcs.titleText,),
                   SizedBox(
-                    width: 185,
+                    width: currentlyBlocking && onBreak ?
+                          ButtonStates.onBreak.buttonWidth : currentlyBlocking ?
+                          ButtonStates.blocked.buttonWidth :
+                          ButtonStates.notBlocked.buttonWidth,
                     height: 64,
                     child: ListenableBuilder(
                       listenable: Listenable.merge([blockTim, breakTim]),
@@ -318,7 +348,8 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                               !breaksAllowed ? ScaffoldMessenger.of(context).showSnackBar(denyBlock) :
                               await openBreakDialog(context);
                             } else{
-                              await openBlockDialog(context);
+                              checkForBlockEntries() ? await openBlockDialog(context) :
+                              ScaffoldMessenger.of(context).showSnackBar(noEntries);
                             }
                           },
                           child: Row(

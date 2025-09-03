@@ -6,12 +6,16 @@ import 'main.dart' as mainScript;
 
 TextStyle defaultText = TextStyle(
   color: Colors.white, 
-  fontSize: 16
+  fontSize: 20
 );
 
 TextStyle titleText = TextStyle(
   color: Colors.grey[400],
   fontSize: 45
+);
+
+TextStyle snackBarText = TextStyle(
+  color: Colors.white
 );
 
 Future<Map<String, type>> loadJsonFromFile<type>(String fileName) async{
