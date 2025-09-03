@@ -763,6 +763,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     int duration = 0;
     if(mounted) Navigator.pop(context);
     if(blocked){
+      await http.post(Uri.parse("http://127.0.0.1:8000/initRegCheck"));
       setState(() {
         currentlyBlocking = true;
       });
