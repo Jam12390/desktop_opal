@@ -46,7 +46,6 @@ def initialPolicyCheck():
         keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_SET_VALUE)
         winreg.CloseKey(keyPath)
     except OSError as e:
-        print(e)
         soft = winreg.OpenKey(location, r"SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES", 0, winreg.KEY_WRITE)
         explorerPolicyLocation = winreg.CreateKey(soft, "EXPLORER")
         winreg.SetValueEx(explorerPolicyLocation, "DisallowRun", 0, winreg.REG_DWORD, 1)
@@ -65,6 +64,7 @@ def terminateBlockedApps():
     for process in openApps:
         if process.name() in blockedApps:
             process.terminate()
+    winreg.CloseKey(keyPath)
 
 @api.post("/toggleBreak")
 def toggleBreak(params: BreakRequest):
@@ -75,37 +75,12 @@ def toggleBreak(params: BreakRequest):
     else:
         createAppValues(params=RegRequest(values=keysBuffer))
 
-def createKeys(valuesToCreate : list): #this is redundant - please remove after program finish
-    try:
-        location = winreg.HKEY_CURRENT_USER
-        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DISALLOWRUN", 0, winreg.KEY_ALL_ACCESS)
-        numberOfValues = winreg.QueryInfoKey(keyPath)[1] #this usually should be - 1 since there is always a default blank value, however since we are using this for a for loop its just easier to leave it like this
-        valuesAdded = 0
-        for app in valuesToCreate: #cycle through each app to be blocked
-            appValueExists = False
-            for value in range(1, numberOfValues): #and check each one against preexisting values (no need to make duplicates)
-                if winreg.QueryValueEx(keyPath, str(value))[0] == app: #if the entry already exists
-                    print(f"Found entry {app} at entry no.{value}")
-                    appValueExists = True #no need to make another value
-            if not appValueExists: #if an entry doesnt exist for this app
-                print(f"Attempting to create entry for {app} at index {numberOfValues+valuesAdded}")
-                winreg.SetValueEx(keyPath, str(numberOfValues+valuesAdded), 0, winreg.REG_SZ, str(app)) #make one with the next available pointer
-                valuesAdded += 1 #increment the pointer to be used for the next value
-                try:
-                    print(winreg.QueryValueEx(keyPath, str(numberOfValues+valuesAdded)))
-                    print(f"Successfully created entry for {app}")
-                except Exception as e:
-                    print(f"WARNING: Entry for {app} failed with exception {e}")
-    except Exception as e:
-        print(e)
-        input("Press enter to exit.")
-
 @api.post("/createRegKeys")
 def createAppValues(params: RegRequest):
     valuesToCreate = params.values
+    location = winreg.HKEY_CURRENT_USER
+    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_ALL_ACCESS)
     try:
-        location = winreg.HKEY_CURRENT_USER
-        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_ALL_ACCESS)
         winreg.SetValueEx(keyPath, "DisallowRun", 0, winreg.REG_DWORD, 1)
         keyPath = winreg.CreateKey(keyPath, "DisallowRun")
         numberOfValues = winreg.QueryInfoKey(keyPath)[1]
@@ -131,7 +106,7 @@ def createAppValues(params: RegRequest):
         winreg.CloseKey(keyPath)
         return 0
     except Exception as e:
-        print(e)
+        winreg.CloseKey(keyPath)
         return -1
 
 @api.post("/deleteRegKeys")
@@ -144,7 +119,6 @@ def deleteKeys(params: RegRequest):
         winreg.EnumValue(keyPath, i)[1]
         for i in range(0, numberOfValues)
     ]
-    toRemove = []
     for value in valuesToDelete:
         if value in preExistingValues:
             removedPosition = preExistingValues.index(value) + 1
@@ -153,14 +127,7 @@ def deleteKeys(params: RegRequest):
             decreaseFurtherValues(startingValue=removedPosition, numberOfValues=numberOfValues, keyPath=keyPath)
             numberOfValues -= 1
             preExistingValues.remove(value)
-    #for value in range(1, numberOfValues):
-    #    try:
-    #        if winreg.QueryValueEx(keyPath, str(value))[1] in valuesToDelete:
-    #            winreg.DeleteValue(keyPath, str(value))
-    #            decreaseFurtherValues(startingValue=value, numberOfValues=numberOfValues, keyPath=keyPath)
-    #            numberOfValues -= 1
-    #    except Exception as e:
-    #        print(e)
+    winreg.CloseKey(keyPath)
 
 def decreaseFurtherValues(startingValue : int, numberOfValues : int, keyPath : winreg.HKEYType):
     for upperValue in range(startingValue+1, numberOfValues+1):
@@ -170,15 +137,17 @@ def decreaseFurtherValues(startingValue : int, numberOfValues : int, keyPath : w
 
 @api.post("/wipeEntries")
 def wipeEntries():
+    location = winreg.HKEY_CURRENT_USER
+    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
     try:
-        location = winreg.HKEY_CURRENT_USER
-        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
         numberOfValues = winreg.QueryInfoKey(keyPath)[1]
         for key in range(1, numberOfValues):
             winreg.DeleteKey(keyPath, str(key))
         os.system("gpupdate /target:user")
+        winreg.CloseKey(keyPath)
         return 0
     except:
+        winreg.CloseKey(keyPath)
         return -1
 
 

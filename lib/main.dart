@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:process_run/shell.dart';
 import 'dart:async';
+import 'package:http/http.dart' as http;
 
 Map<String, dynamic> settings = {};
 Map<String, dynamic> initialSettings = {};
@@ -73,6 +74,8 @@ start winregBackend.py
   }
   settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
   initialSettings = jsonDecode(jsonEncode(settings)); //makes a deep copy (unlinked) of the object
+  await http.post(Uri.parse("http://127.0.0.1:8000/initRegCheck"));
+
   history = (await funcs.loadJsonFromFile<dynamic>("barchartdata.json")).map((key, value) => MapEntry(key, double.parse(value.toString())),);
 
   List<String> dayKeys = List.from(history.keys);
