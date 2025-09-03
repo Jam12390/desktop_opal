@@ -1,13 +1,26 @@
+import os
+try:
+    import psutil
+    import shutil
+    import winreg
+    import uvicorn
+    import fastapi
+    import ctypes, sys
+    from pydantic import BaseModel
+    import win32com.client
+    import pythoncom
+    import sys, getpass
+except:
+    os.system("pip install -r requirements.txt")
+
 import psutil
 import shutil
 import winreg
-import os
 import uvicorn
 import fastapi
 import ctypes, sys
 from pydantic import BaseModel
 import win32com.client
-
 import pythoncom
 import sys, getpass
 

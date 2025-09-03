@@ -35,3 +35,4 @@ flutter:
   assets:
     - assets/barchartdata.json
     - assets/settings.json
+    - assets/winregBackend.py

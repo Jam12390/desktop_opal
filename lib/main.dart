@@ -62,6 +62,7 @@ void main() async{
 
   shell.run('''
 cd %cd%
+cd assets
 start winregBackend.py
 ''');
 
