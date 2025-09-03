@@ -60,10 +60,7 @@ String verifyFormat(String toCheck){
 void main() async{
   var shell = Shell();
 
-  shell.run(
-    r'winregBackend.py'
-  );
-  //shell.run(r"start $pwd/../assets/winregBackend.py");
+  shell.run(r"start $pwd/../assets/winregBackend.py");
 
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
@@ -114,7 +111,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      restorationScopeId: "Test",
       title: 'Flutter Demo',
       theme: AppThemes.lightMode,
       darkTheme: AppThemes.darkMode,
