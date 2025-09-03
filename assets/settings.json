@@ -1,1 +1,1 @@
-{"detectedApps":{},"enabledApps":[],"excludedApps":[],"blacklistedApps":["explorer.exe"],"darkMode":true}
+{"detectedApps":{},"enabledApps":[],"excludedApps":[],"blacklistedApps":["explorer.exe", "winreg.exe", "tskmgr.exe"],"darkMode":true}

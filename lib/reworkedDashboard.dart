@@ -44,7 +44,7 @@ enum ButtonStates{
       )),
       Align(alignment: Alignment.centerRight, child: Icon(Icons.play_arrow)),
     ],
-    buttonWidth: 185
+    buttonWidth: 195
   );
 
   const ButtonStates({
@@ -742,7 +742,11 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                                 })
                               );
                               breakTim.duration = duration;
-                              breakTim.startTimer();
+                              if(breakTim.duration! > blockTim.duration!){
+                                blockTim.endTimer();
+                              }else{
+                                breakTim.startTimer();
+                              }
                             },
                             child: Text("Ok")
                           )
