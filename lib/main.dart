@@ -77,19 +77,22 @@ void main() async{
 
   List<String> dayKeys = List.from(history.keys);
   for(int index=0; index<dayKeys.length; index++){
-    if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){
+    if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){ //covers if the final index is today
       historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-    } else if(index == dayKeys.length-1 || dayKeys.length == 1){
+    } else if(index == dayKeys.length-1 || dayKeys.length == 1){ //covers if the final index isnt today
       DateTime temp = DateTime.now();
       historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
       fillGaps(dayKeys[index], "${temp.day}/${temp.month}/${temp.year.toString().substring(2, 4)}", finalAddition: true);
-    } else if(decodeString(dayKeys[index]).add(Duration(days: 1)) == decodeString(dayKeys[index+1])){
+    } else if(decodeString(dayKeys[index]).add(Duration(days: 1)) == decodeString(dayKeys[index+1])){ //covers if index and index+1 are consecutive days
       historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
     } else {
       historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
       fillGaps(dayKeys[index], dayKeys[index+1]);
     }
   }
+
+  if(historyBuffer.isEmpty) historyBuffer.addAll({funcs.formatDateToJson(null): 0.0});
+
   if(historyBuffer.length > 7){
     dayKeys = List.from(historyBuffer.keys);
     while(historyBuffer.length > 7){

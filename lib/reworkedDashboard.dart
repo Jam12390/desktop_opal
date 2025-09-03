@@ -203,12 +203,14 @@ class BlockTimer with ChangeNotifier{
     String formattedDate = funcs.formatDateToJson(null);
     if(mainScript.history[formattedDate] != null){
       mainScript.history[formattedDate] = double.parse((mainScript.history[formattedDate]! + timeToAdd/3600).toStringAsFixed(2));
+      int index = barDataKeys.indexOf(formattedDate);
+      barDataValues[index] = mainScript.history[formattedDate]!;
     } else{
       mainScript.history[formattedDate] = double.parse((timeToAdd/3600).toStringAsFixed(2));
+      barDataKeys.add(formattedDate);
+      barDataValues.add(mainScript.history[formattedDate]!);
     }
     File("assets/barchartdata.json").writeAsStringSync(jsonEncode(mainScript.history));
-    int index = barDataKeys.indexOf(formattedDate);
-    barDataValues[index] = mainScript.history[formattedDate]!;
 }
 }
 
