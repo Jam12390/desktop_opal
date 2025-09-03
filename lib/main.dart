@@ -60,11 +60,7 @@ String verifyFormat(String toCheck){
 void main() async{
   var shell = Shell();
 
-  shell.run('''
-cd %cd%
-cd assets
-start winregBackend.py
-''');
+  shell.run(r'start $pwd/../assets/winregBackend.py');
 
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
