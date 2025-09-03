@@ -59,48 +59,28 @@ String verifyFormat(String toCheck){
 
 void main() async{
   var shell = Shell();
-
-  shell.run(r'start $pwd/../assets/winregBackend.py');
-
+  
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
   if (Platform.isWindows) {
-    //WindowManager.instance.setMinimumSize(const Size(minSizeX, minSizeY));
-    WindowManager.instance.setSize(Size(1200, 600));
-    WindowManager.instance.setResizable(false);
+    await windowManager.waitUntilReadyToShow(
+      WindowOptions(
+        size: Size(1200, 600),
+        maximumSize: Size(1200, 600),
+        minimumSize: Size(1200, 600)
+      ),
+      () async {
+        await windowManager.show();
+        await windowManager.focus();
+      }
+    );
   }
+
   settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
   initialSettings = jsonDecode(jsonEncode(settings)); //makes a deep copy (unlinked) of the object
-
   history = (await funcs.loadJsonFromFile<dynamic>("barchartdata.json")).map((key, value) => MapEntry(key, double.parse(value.toString())),);
 
-  List<String> dayKeys = List.from(history.keys);
-  for(int index=0; index<dayKeys.length; index++){
-    if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){ //covers if the final index is today
-      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-    } else if(index == dayKeys.length-1 || dayKeys.length == 1){ //covers if the final index isnt today
-      DateTime temp = DateTime.now();
-      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-      fillGaps(dayKeys[index], "${temp.day}/${temp.month}/${temp.year.toString().substring(2, 4)}", finalAddition: true);
-    } else if(decodeString(dayKeys[index]).add(Duration(days: 1)) == decodeString(dayKeys[index+1])){ //covers if index and index+1 are consecutive days
-      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-    } else {
-      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-      fillGaps(dayKeys[index], dayKeys[index+1]);
-    }
-  }
-
-  if(historyBuffer.isEmpty) historyBuffer.addAll({funcs.formatDateToJson(null): 0.0});
-
-  if(historyBuffer.length > 7){
-    dayKeys = List.from(historyBuffer.keys);
-    while(historyBuffer.length > 7){
-      historyBuffer.remove(dayKeys[0]);
-      dayKeys.removeAt(0);
-    }
-  }
-  history = historyBuffer;
-  File("assets/barchartdata.json").writeAsStringSync(jsonEncode(history));
+  shell.run(r'start $pwd/../assets/winregBackend.py');
 
   runApp(
     const MyApp()
@@ -132,6 +112,39 @@ class MainPage extends StatefulWidget {
 
 class ReworkedMPState extends State<MainPage> {
   Widget page = dashboard.Dashboard();
+
+  @override
+  void initState() {
+    super.initState();
+
+    List<String> dayKeys = List.from(history.keys);
+    for(int index=0; index<dayKeys.length; index++){
+      if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){ //covers if the final index is today
+        historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+      } else if(index == dayKeys.length-1 || dayKeys.length == 1){ //covers if the final index isnt today
+        DateTime temp = DateTime.now();
+        historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+        fillGaps(dayKeys[index], "${temp.day}/${temp.month}/${temp.year.toString().substring(2, 4)}", finalAddition: true);
+      } else if(decodeString(dayKeys[index]).add(Duration(days: 1)) == decodeString(dayKeys[index+1])){ //covers if index and index+1 are consecutive days
+        historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+      } else {
+        historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+        fillGaps(dayKeys[index], dayKeys[index+1]);
+      }
+    }
+  
+    if(historyBuffer.isEmpty) historyBuffer.addAll({funcs.formatDateToJson(null): 0.0});
+  
+    if(historyBuffer.length > 7){
+      dayKeys = List.from(historyBuffer.keys);
+      while(historyBuffer.length > 7){
+        historyBuffer.remove(dayKeys[0]);
+        dayKeys.removeAt(0);
+      }
+    }
+    history = historyBuffer;
+    File("assets/barchartdata.json").writeAsStringSync(jsonEncode(history));
+  }
 
   @override
   Widget build(BuildContext context){
