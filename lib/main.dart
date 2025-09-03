@@ -61,8 +61,7 @@ void main() async{
   var shell = Shell();
 
   shell.run('''
-cd C:\\Users\\natha\\OneDrive\\Documents\\Python\\'VSCode Python'\\'Hack Club Stuff'\\desktop_opal\\desktop_opal
-dir
+cd %cd%
 start winregBackend.py
 ''');
 

@@ -48,7 +48,7 @@ enum ButtonStates{
 bool currentlyBlocking = false;
 Timer? breakTimer;
 bool onBreak = false;
-String timerText = "No active session";
+String timerText = "No Active Session";
 double timerBarScale = 1;
 int blockDuration = 0;
 int initBlockDuration = 0;
@@ -172,12 +172,12 @@ class BlockTimer with ChangeNotifier{
   }
 
   void endTimer(){
-    timer!.cancel();
+    if(timer!=null) timer!.cancel();
     timerText = "No Active Session";
     timerBarScale = 1;
     currentlyBlocking = false;
     onBreak = false;
-    mainSetState == null ? updateBarChart() : mainSetState!(() => updateBarChart());
+    (mainSetState == null) ? updateBarChart() : mainSetState!(() => updateBarChart());
     timeToAdd = 0;
     http.post(
       Uri.parse("http://127.0.0.1:8000/toggleBreak"),
@@ -235,7 +235,7 @@ class BreakTimer with ChangeNotifier{
   }
 
   void endTimer(){
-    timer!.cancel();
+    if(timer!=null) timer!.cancel();
     timerText = "No Active Session";
     onBreak = false;
     http.post(
@@ -246,6 +246,7 @@ class BreakTimer with ChangeNotifier{
         "keys": funcs.validateBlockedApps()[0]
       })
     );
+    http.post(Uri.parse("http://127.0.0.1:8000/terminateBlockedApps"));
   }
 }
 
@@ -254,7 +255,7 @@ BreakTimer breakTim = BreakTimer();
 
 Function(void Function())? mainSetState;
 
-bool isUnblockable = true;
+bool breaksAllowed = true;
 
 class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   final BoxDecoration defaultDecor = BoxDecoration(
@@ -277,6 +278,8 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     backgroundColor: Colors.grey[900],
   );
 
+  List<double> sliderValues = List.filled(5, 0);
+
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
   @override
@@ -289,6 +292,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   void dispose(){
     super.dispose();
     widgetBinding.removeObserver(this);
+    mainSetState = null;
   }
 
   @override
@@ -306,7 +310,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                 children: [
                   Text("Dashboard:", style: funcs.titleText,),
                   SizedBox(
-                    width: 175,
+                    width: 185,
                     height: 64,
                     child: ListenableBuilder(
                       listenable: Listenable.merge([blockTim, breakTim]),
@@ -316,7 +320,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                             if(currentlyBlocking && onBreak){
                               breakTim.endTimer();
                             } else if(currentlyBlocking){
-                              isUnblockable ? ScaffoldMessenger.of(context).showSnackBar(denyBlock) :
+                              !breaksAllowed ? ScaffoldMessenger.of(context).showSnackBar(denyBlock) :
                               await openBreakDialog(context);
                             } else{
                               await openBlockDialog(context);
@@ -401,7 +405,22 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                       decoration: defaultDecor,
                       width: defaultWidth,
                       height: 308,
-                      child: Text("data2", style: defaultText,),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 16, top: 8),
+                              child: Text("oooo Sliders (i forgot what i wanted to put here)", style: defaultText,),
+                            )
+                          ),
+                          for(int x=0; x<5; x++) Slider(value: sliderValues[x], onChanged: (value) {
+                            sliderValues[x] = value;
+                            setState(() {});
+                          })
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -423,7 +442,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                           padding: const EdgeInsets.only(top: 10, bottom: 16),
                           child: Align(
                             alignment: Alignment.topLeft,
-                            child: Text("Statistics:", style: defaultText,),
+                            child: Text("Statistics (Time Blocked):", style: defaultText,),
                           ),
                         ),
                         ListenableBuilder(
@@ -431,7 +450,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                           builder: (context, child) {
                             return Expanded(child: HistoryBarChart());
                           }
-                        ), //TODO: update hours with new block info
+                        ),
                       ],
                     ),
                   ),
@@ -584,9 +603,9 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                               children: [
                                 Text("Breaks Allowed"),
                                 Checkbox(
-                                  value: isUnblockable,
+                                  value: breaksAllowed,
                                   onChanged: (value) {
-                                    isUnblockable = value ?? true;
+                                    breaksAllowed = value ?? true;
                                     setState(() {});
                                   }
                                 )
@@ -608,7 +627,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                               child: Text("Nu uh")
                             ),
                             TextButton(
-                              onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, fixedDuration: duration, endTime: selectedTime, unblockable: isUnblockable),
+                              onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, fixedDuration: duration, endTime: selectedTime),
                               child: Text("Yuh huh")
                             ),
                             isWaiting ? CircularProgressIndicator() : Container(),
@@ -619,19 +638,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                   ),
                 ),
               ),
-              //actions: [
-              //  TextButton(
-              //    onPressed: () => {
-              //      timeChosen = false,
-              //      closeDialog(blocked: false, isFixedDuration: false)
-              //    },
-              //    child: Text("Nu uh")
-              //  ),
-              //  TextButton(
-              //    onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, duration: duration, endTime: selectedTime, unblockable: isUnblockable),
-              //    child: Text("Yuh huh")
-              //  )
-              //],
             );
           }
         );
@@ -640,7 +646,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   }
 
   Future<void> openBreakDialog(BuildContext context) async{
-    double duration = 5;
+    int duration = 300;
 
     List<DropdownMenuEntry> durationValues = List.generate(6, (index) => DropdownMenuEntry(
       value: index+1 > 3 ? 
@@ -674,7 +680,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                             initialSelection: durationValues[0],
                             dropdownMenuEntries: durationValues,
                             onSelected: (value) {
-                              duration = double.parse(value.toString());
+                              duration = int.parse(value.toString()) * 60;
                               setState(() {});
                             },
                           )
@@ -691,6 +697,13 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                             child: Text("Cancel")
                           ),
                           TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              blockTim.endTimer();
+                            },
+                            child: Text("End Session Now")
+                          ),
+                          TextButton(
                             onPressed: () async {
                               Navigator.pop(context);
                               await http.post(
@@ -701,9 +714,8 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                                   "keys": funcs.validateBlockedApps()[0]
                                 })
                               );
-                              breakTim.duration = 15;
+                              breakTim.duration = duration;
                               breakTim.startTimer();
-                              //TODO: create second timer and setState it to replace the current block timer (can probably use mainSetState)
                             },
                             child: Text("Ok")
                           )
@@ -720,7 +732,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     );
   }
 
-  void closeDialog({required bool blocked, required bool isFixedDuration, int? fixedDuration, TimeOfDay? endTime, bool? unblockable}) async{
+  void closeDialog({required bool blocked, required bool isFixedDuration, int? fixedDuration, TimeOfDay? endTime}) async{
     int duration = 0;
     if(mounted) Navigator.pop(context);
     if(blocked){
@@ -765,7 +777,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
       blockTim.duration = duration;
       blockTim.startTimer();
     }
-    print("Blocking: $blocked for fixed ($isFixedDuration) duration $duration or until $endTime for ${getDurationInSeconds(endTime ?? TimeOfDay.now(), null)} seconds. Blockable: $unblockable");
+    //print("Blocking: $blocked for fixed ($isFixedDuration) duration $duration or until $endTime for ${getDurationInSeconds(endTime ?? TimeOfDay.now(), null)} seconds. Blockable: $unblockable");
     validDuration = false;
   }
 }

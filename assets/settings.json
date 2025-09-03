@@ -1,1 +1,1 @@
-{"detectedApps":{"chrome.exe":true,"kicad.exe":false,"freecad.exe":true,"krita.exe":false},"enabledApps":["chrome.exe","kicad.exe","krita.exe"],"excludedApps":["freecad.exe"],"blacklistedApps":{},"darkMode":true}
+{"detectedApps":{},"enabledApps":[],"excludedApps":[],"blacklistedApps":["explorer.exe"],"darkMode":true}

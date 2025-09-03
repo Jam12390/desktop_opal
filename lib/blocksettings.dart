@@ -81,6 +81,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                       ListTile(
                         leading: Icon(Icons.abc),
                         title: Text("Dark Mode"),
+                        subtitle: Text("(Coming... at one point)"),
                         trailing: Switch(
                           value: mainScript.settings["darkMode"],
                           onChanged: (value) {
@@ -88,6 +89,19 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                             setState(() {});
                           }
                         )
+                      ),
+                      ListTile(
+                        leading: Icon(Icons.restore),
+                        title: Text("The Uh Oh Button"),
+                        subtitle: Text("For when the windows registry decides you no longer have access to any apps"),
+                        trailing: IconButton(
+                          onPressed: () {
+                            http.post(Uri.parse("http://127.0.0.1:8000/wipeEntries"));
+                            dashboard.blockTim.endTimer();
+                            dashboard.breakTim.endTimer();
+                          },
+                          icon: Icon(Icons.restore)
+                        ),
                       )
                     ],
                   ),
@@ -225,6 +239,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                       ),
                       TextButton(
                         onPressed: () async {
+                          Navigator.pop(context);
                           setState(() {
                             mainScript.settings["detectedApps"] = {};
                             mainScript.settings["enabledApps"] = [];
@@ -435,6 +450,8 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                                     return "Enter a value";
                                   } else if(value.substring((value.length-4).clamp(0, value.length), value.length) != ".exe"){
                                     return "Ensure your executable ends in .exe";
+                                  } else if(mainScript.settings["blacklistedApps"].contains(value)){
+                                    return "This app is blacklisted from blockable apps";
                                   }
                                   return null;
                                 },

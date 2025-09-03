@@ -1,4 +1,5 @@
 import psutil
+import shutil
 import winreg
 import os
 import uvicorn
@@ -53,8 +54,13 @@ def initialPolicyCheck():
         winreg.CloseKey(explorerPolicyLocation)
         winreg.CloseKey(soft)
 
-@api.post("/terminateBlockedApps")
-def terminateBlockedApps(blockedApps : list):
+@api.post("/terminateBlockedApps") #TODO: implement in actual program, shouldn't be too hard
+def terminateBlockedApps():
+    location = winreg.HKEY_CURRENT_USER
+    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DISALLOWRUN", 0, winreg.KEY_READ)
+    blockedApps = []
+    for key in range(1, winreg.QueryInfoKey(keyPath)[1]+1):
+        blockedApps.append(winreg.QueryValueEx(keyPath, str(key))[0])
     openApps = psutil.process_iter()
     for process in openApps:
         if process.name() in blockedApps:
@@ -121,9 +127,6 @@ def createAppValues(params: RegRequest):
             except Exception as e:
                 print(f"Addition of {remainingApp} failed with exception {e}")
             valuesAdded += 1
-        #for process in psutil.process_iter():
-        #    if process.name() == "explorer.exe" and not debug:
-        #        process.kill()
         os.system("gpupdate /target:user")
         winreg.CloseKey(keyPath)
         return 0
@@ -173,6 +176,7 @@ def wipeEntries():
         numberOfValues = winreg.QueryInfoKey(keyPath)[1]
         for key in range(1, numberOfValues):
             winreg.DeleteKey(keyPath, str(key))
+        os.system("gpupdate /target:user")
         return 0
     except:
         return -1
@@ -216,6 +220,15 @@ def createList(path: str):
     for file in os.listdir(os.fsencode(path)):
         result.append(file)
     return result
+
+#potentially use in future
+@api.get("/isInstalled")
+def checkForInstall(app: str):
+    install = shutil.which(app)
+    if install != None:
+        return True
+    else:
+        return False
 
 @api.get("/test")
 def test(a : int, b : int):
