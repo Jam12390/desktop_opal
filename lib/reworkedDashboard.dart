@@ -61,9 +61,9 @@ int isTouchedIndex = -1;
 double timeToAdd = 0;
 
 class HistoryBarChart extends StatefulWidget{
-  HistoryBarChart({super.key});
+  const HistoryBarChart({super.key});
 
-
+  @override
   State<HistoryBarChart> createState() => HistoryState();
 }
 
@@ -153,7 +153,6 @@ class BlockTimer with ChangeNotifier{
     timerText = "Time Remaining: ${funcs.formatTimerRemaining(duration!)}";
     //notifyListeners();
     timer = Timer.periodic(Duration(seconds: 1), (value) {
-      print("dont even");
       timeToAdd++; //add time to bar chart
       duration = duration!-1;
       if(duration! <= 0){
@@ -212,7 +211,6 @@ class BreakTimer with ChangeNotifier{
     int initDuration = duration!;
     timerText = "On Break For: ${funcs.formatTimerRemaining(duration!)}";
     timer = Timer.periodic(Duration(seconds: 1), (value) {
-      print("think about it");
       timeToAdd--; //take break time away from addition to bar chart - could add separate bars for breaktime in a future update?
       duration = duration! - 1;
       if(duration! <= 0){
@@ -262,10 +260,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     color: Colors.grey[900],
     borderRadius: BorderRadius.all(Radius.circular(16))
   );
-  late TextStyle defaultText = TextStyle(
-    color: Colors.white,
-    fontSize: funcs.recalculateTextSize(context, []) //0.05 and 0.025 are the weightings that the width and height of the window have in respect to the fontsize
-  );
+  
   bool validDuration = false;
   late DateTime time;
   bool timeChosen = false;
@@ -274,7 +269,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   final double defaultWidth = 450;
 
   final SnackBar denyBlock = SnackBar(
-    content: Text("Blocking has been disabled for this session.", style: TextStyle(color: Colors.white),),
+    content: Text("Blocking has been disabled for this session.", style: funcs.defaultText),
     backgroundColor: Colors.grey[900],
   );
 
@@ -366,7 +361,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                                 alignment: Alignment.topLeft,
                                 child: Padding(
                                   padding: const EdgeInsets.only(left: 10, top: 10),
-                                  child: Text(timerText, style: defaultText,),
+                                  child: Text(timerText, style: funcs.defaultText,),
                                 )
                               ),
                             ),
@@ -412,7 +407,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                             alignment: Alignment.centerLeft,
                             child: Padding(
                               padding: const EdgeInsets.only(left: 16, top: 8),
-                              child: Text("oooo Sliders (i forgot what i wanted to put here)", style: defaultText,),
+                              child: Text("oooo Sliders (i forgot what i wanted to put here)", style: funcs.defaultText,),
                             )
                           ),
                           for(int x=0; x<5; x++) Slider(value: sliderValues[x], onChanged: (value) {
@@ -442,7 +437,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                           padding: const EdgeInsets.only(top: 10, bottom: 16),
                           child: Align(
                             alignment: Alignment.topLeft,
-                            child: Text("Statistics (Time Blocked):", style: defaultText,),
+                            child: Text("Statistics (Time Blocked):", style: funcs.defaultText,),
                           ),
                         ),
                         ListenableBuilder(
@@ -565,7 +560,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                                         ) ?? TimeOfDay.now();
                                         setState(() {
                                           timeChosen = true;
-                                          print(time);
                                         });
                                       },
                                       child: Text("${timeChosen ? "Change" : "Choose"} Time")

@@ -7,7 +7,6 @@ import 'package:window_manager/window_manager.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:process_run/shell.dart';
 import 'dart:async';
-import 'package:http/http.dart' as http;
 
 Map<String, dynamic> settings = {};
 Map<String, dynamic> initialSettings = {};
@@ -77,11 +76,10 @@ start winregBackend.py
   history = (await funcs.loadJsonFromFile<dynamic>("barchartdata.json")).map((key, value) => MapEntry(key, double.parse(value.toString())),);
 
   List<String> dayKeys = List.from(history.keys);
-  String formattedDateTimeNow = funcs.formatDateToJson(null);
   for(int index=0; index<dayKeys.length; index++){
-    if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){ //if at the final index AND final index = datetime.now
+    if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){
       historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-    } else if(index == dayKeys.length-1 || dayKeys.length == 1){ //if not true then if we ARENT at the end OR the length of the list is 1
+    } else if(index == dayKeys.length-1 || dayKeys.length == 1){
       DateTime temp = DateTime.now();
       historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
       fillGaps(dayKeys[index], "${temp.day}/${temp.month}/${temp.year.toString().substring(2, 4)}", finalAddition: true);
@@ -90,7 +88,6 @@ start winregBackend.py
     } else {
       historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
       fillGaps(dayKeys[index], dayKeys[index+1]);
-      //TODO: IT WORKS
     }
   }
   if(historyBuffer.length > 7){
@@ -129,69 +126,6 @@ class MainPage extends StatefulWidget {
 
   @override
   State<MainPage> createState() => ReworkedMPState();
-}
-
-class MainPageState extends State<MainPage> {
-  Text appbarText = Text("Dashboard", style: TextStyle(color: Colors.white),);
-
-  File settingsFile = File("assets/settings.json");
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-
-        backgroundColor: Colors.red,
-        toolbarHeight: 50,
-
-        title: appbarText,
-      ),
-      drawer: Drawer(
-        child: ListView(
-          children: [
-            SizedBox(
-              height: 120,
-              child: DrawerHeader(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: <Color>[
-                    Colors.red,
-                    Colors.redAccent
-                  ])
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 8, bottom: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text("miata"),
-                      Text("waaaaaaaaaaaaaaaaaaaaa")
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            CustomListTile(Icon(Icons.dashboard_rounded, color: Colors.grey[800],), Text("Dashboard"), () {
-              setState(() {
-                page = dashboard.Dashboard();
-                appbarText = Text("Dashboard");
-                Navigator.pop(context);
-              });
-              }
-            ),
-            CustomListTile(Icon(Icons.stop_circle_rounded, color: Colors.grey[800],), Text("Block Settings"), () {
-              setState(() {
-                page = blockSettings.BlockSettingsPage();
-                appbarText = Text("Block Settings");
-                Navigator.pop(context);
-              });
-            })
-          ],
-        ),
-      ),
-      body: page
-    );
-  }
 }
 
 class ReworkedMPState extends State<MainPage> {

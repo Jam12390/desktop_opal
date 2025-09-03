@@ -17,22 +17,7 @@ class BlockSettingsPage extends StatefulWidget{
 }
 
 class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindingObserver, TickerProviderStateMixin{
-  final List<double> dimensionWeightings = [0.03, 0.0125];
-  final List<double> titleDimensionWeightings = [0.06, 0.025]; //can hardcode for prod
   File settingsFile = File("assets/settings.json");
-
-  late TextStyle defaultText = TextStyle(
-    color: Colors.white, 
-    fontSize: 16
-    //fontSize: funcs.recalculateTextSize(context, dimensionWeightings) //vary this when testing
-  );
-
-  late TextStyle titleText = TextStyle(
-    color: Colors.grey[400],
-    //decoration: TextDecoration.underline,
-    fontSize: 45
-    //fontSize: funcs.recalculateTextSize(context, titleDimensionWeightings),
-  );
 
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
@@ -60,7 +45,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
             padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text("Settings:", style: titleText,)
+              child: Text("Settings:", style: funcs.titleText,)
             ),
           ),
           Divider(height: 50,),
@@ -213,7 +198,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
     );
   }
 
-  Future<void> openConfirmDialog(BuildContext context) async { //TODO: end any existing block session when the button is pressed
+  Future<void> openConfirmDialog(BuildContext context) async {
     return await showDialog(
       context: context,
       builder: (context) {
@@ -284,7 +269,6 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
               excludedApps[app]![1] = false;
               apps[app]![1] = true;
           } else{
-              print("Deactivated $app");
               apps[app]![1] = false;
               excludedApps[app]![1] = true;
           }
@@ -309,12 +293,11 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
     }
 
     void addExecutable({required String executable}){
-      print("run");
       mainScript.settings["detectedApps"][executable] = true;
       externalSetState!(() {
         mainScript.settings["enabledApps"].add(executable);
         apps[executable] = [
-          editDialogListTile(
+          EditDialogListTile(
           active: true,
           title: executable,
           toggleFunction: () => toggle(false, executable),
@@ -323,7 +306,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
         true
       ];
       excludedApps[executable] = [
-        editDialogListTile(
+        EditDialogListTile(
           active: false,
           title: executable,
           toggleFunction: () => toggle(true, executable),
@@ -338,7 +321,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
 
     apps = {
       for(var app in availableApps) app: [
-        editDialogListTile(
+        EditDialogListTile(
           active: true,
           title: app,
           toggleFunction: () => toggle(false, app),
@@ -349,7 +332,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
     };
     excludedApps = {
       for(var app in availableApps) app: [
-        editDialogListTile(
+        EditDialogListTile(
           active: false,
           title: app,
           toggleFunction: () => toggle(true, app),
@@ -459,9 +442,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                             ),
                             IconButton(
                               onPressed: () {
-                                if(formKey.currentState!.validate()) {
-                                  addExecutable(executable: textController.text);
-                                };
+                                if(formKey.currentState!.validate()) addExecutable(executable: textController.text);
                               },
                               icon: Icon(Icons.arrow_right, color: Colors.white,)
                             )
@@ -525,8 +506,8 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
   }
 }
 
-class editDialogListTile extends StatelessWidget{
-  editDialogListTile({required this.active, required this.title, required this.toggleFunction, required this.deleteFunction});
+class EditDialogListTile extends StatelessWidget{
+  const EditDialogListTile({super.key, required this.active, required this.title, required this.toggleFunction, required this.deleteFunction});
 
   final bool active;
   final String title;
