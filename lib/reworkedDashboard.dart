@@ -113,7 +113,7 @@ class HistoryState extends State<HistoryBarChart>{
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               return BarTooltipItem(
                 "${barDataKeys[groupIndex]}:\n${rod.toY.toString()} hours",
-                funcs.defaultText
+                funcs.graphTooltipText
               );
             },
           ),

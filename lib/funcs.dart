@@ -18,6 +18,11 @@ TextStyle snackBarText = TextStyle(
   color: Colors.white
 );
 
+TextStyle graphTooltipText = TextStyle(
+  fontSize: 16,
+  color: Colors.white
+);
+
 Future<Map<String, type>> loadJsonFromFile<type>(String fileName) async{
   return jsonDecode(await rootBundle.loadString("assets/$fileName")) as Map<String, type>;
 }
