@@ -75,21 +75,34 @@ start winregBackend.py
   }
   settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
   initialSettings = jsonDecode(jsonEncode(settings)); //makes a deep copy (unlinked) of the object
-  history = (await funcs.loadJsonFromFile<dynamic>("barchartdata.json")).map((key, value) => MapEntry(key, value as double),);
+  history = (await funcs.loadJsonFromFile<dynamic>("barchartdata.json")).map((key, value) => MapEntry(key, double.parse(value.toString())),);
 
   List<String> dayKeys = List.from(history.keys);
   String formattedDateTimeNow = funcs.formatDateToJson(null);
   for(int index=0; index<dayKeys.length; index++){
-    if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){
+    if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){ //if at the final index AND final index = datetime.now
       historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-    } else if(index != dayKeys.length-1 || dayKeys.length == 1){
+    } else if(index == dayKeys.length-1 || dayKeys.length == 1){ //if not true then if we ARENT at the end OR the length of the list is 1
       DateTime temp = DateTime.now();
+      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
       fillGaps(dayKeys[index], "${temp.day}/${temp.month}/${temp.year.toString().substring(2, 4)}", finalAddition: true);
-    }else {
+    } else if(decodeString(dayKeys[index]).add(Duration(days: 1)) == decodeString(dayKeys[index+1])){
+      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+    } else {
+      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
       fillGaps(dayKeys[index], dayKeys[index+1]);
       //TODO: IT WORKS
     }
   }
+  if(historyBuffer.length > 7){
+    dayKeys = List.from(historyBuffer.keys);
+    while(historyBuffer.length > 7){
+      historyBuffer.remove(dayKeys[0]);
+      dayKeys.removeAt(0);
+    }
+  }
+  history = historyBuffer;
+  File("assets/barchartdata.json").writeAsStringSync(jsonEncode(history));
 
   runApp(
     const MyApp()
@@ -316,44 +329,3 @@ class CustomListTile extends StatelessWidget{
     );
   }
 }
-
-//class CustomListTile extends StatelessWidget{
-//  final Text text;
-//  final Icon icon;
-//  final VoidCallback onTapFunction;
-//
-//  const CustomListTile(this.icon, this.text, this.onTapFunction, {super.key});
-//
-//  @override
-//  Widget build(BuildContext context){
-//    return InkWell(
-//      onTap: onTapFunction,
-//      splashColor: Colors.orange,
-//      child: Padding(
-//        padding: const EdgeInsets.only(top: 8, bottom: 8),
-//        child: Container(
-//          //height: 60,
-//          child: Column(
-//          children: [
-//            icon,
-//            text
-//            //Padding(
-//            //  padding: const EdgeInsets.all(6),
-//            //  child: Wrap(
-//            //    spacing: 10,
-//            //      children: [
-//            //        icon, text
-//            //      ]
-//            //  ),
-//            //),
-//            //Padding(
-//            //  padding: const EdgeInsets.only(right: 8),
-//            //  child: Icon(Icons.arrow_right, color: Colors.grey[800]),
-//            //)
-//          ],
-//          ),
-//        ),
-//      )
-//    );
-//  }
-//}

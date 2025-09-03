@@ -1,8 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
 
-import 'package:day_night_time_picker/day_night_time_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:desktop_opal/main.dart' as mainScript;
@@ -30,7 +29,14 @@ enum ButtonStates{
       child: Text("Take A Break?"),
     )),
     Align(alignment: Alignment.centerRight, child: Icon(Icons.pause))],
-  );
+  ),
+  onBreak(widgets: [
+    Align(alignment: Alignment.centerLeft, child: Padding(
+      padding: EdgeInsets.only(bottom: 3),
+      child: Text("Continue Blocking"),
+    )),
+    Align(alignment: Alignment.centerRight, child: Icon(Icons.play_arrow)),
+  ]);
 
   const ButtonStates({
     required this.widgets,
@@ -148,7 +154,7 @@ class BlockTimer with ChangeNotifier{
     //notifyListeners();
     timer = Timer.periodic(Duration(seconds: 1), (value) {
       print("dont even");
-      timeToAdd++; //add time to timertoadd
+      timeToAdd++; //add time to bar chart
       duration = duration!-1;
       if(duration! <= 0){
         endTimer();
@@ -171,12 +177,7 @@ class BlockTimer with ChangeNotifier{
     timerBarScale = 1;
     currentlyBlocking = false;
     onBreak = false;
-    String formattedDate = funcs.formatDateToJson(null);
-    if(mainScript.history[formattedDate] != null){
-      mainScript.history[formattedDate] = double.parse((mainScript.history[formattedDate]! + timeToAdd/3600).toStringAsFixed(2));
-    } else{
-      mainScript.history[formattedDate] = double.parse((timeToAdd/3600).toStringAsFixed(2));
-    }
+    mainSetState == null ? updateBarChart() : mainSetState!(() => updateBarChart());
     timeToAdd = 0;
     http.post(
       Uri.parse("http://127.0.0.1:8000/toggleBreak"),
@@ -187,6 +188,18 @@ class BlockTimer with ChangeNotifier{
       })
     );
   }
+
+  void updateBarChart(){
+    String formattedDate = funcs.formatDateToJson(null);
+    if(mainScript.history[formattedDate] != null){
+      mainScript.history[formattedDate] = double.parse((mainScript.history[formattedDate]! + timeToAdd/3600).toStringAsFixed(2));
+    } else{
+      mainScript.history[formattedDate] = double.parse((timeToAdd/3600).toStringAsFixed(2));
+    }
+    File("assets/barchartdata.json").writeAsStringSync(jsonEncode(mainScript.history));
+    int index = barDataKeys.indexOf(formattedDate);
+    barDataValues[index] = mainScript.history[formattedDate]!;
+}
 }
 
 class BreakTimer with ChangeNotifier{
@@ -200,6 +213,7 @@ class BreakTimer with ChangeNotifier{
     timerText = "On Break For: ${funcs.formatTimerRemaining(duration!)}";
     timer = Timer.periodic(Duration(seconds: 1), (value) {
       print("think about it");
+      timeToAdd--; //take break time away from addition to bar chart - could add separate bars for breaktime in a future update?
       duration = duration! - 1;
       if(duration! <= 0){
         endTimer();
@@ -228,8 +242,8 @@ class BreakTimer with ChangeNotifier{
       Uri.parse("http://127.0.0.1:8000/toggleBreak"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
-        "value": currentlyBlocking ? true : false,
-        "goingOnBreak": funcs.validateBlockedApps()[0]
+        "goingOnBreak": currentlyBlocking ? false : true,
+        "keys": funcs.validateBlockedApps()[0]
       })
     );
   }
@@ -239,6 +253,8 @@ BlockTimer blockTim = BlockTimer();
 BreakTimer breakTim = BreakTimer();
 
 Function(void Function())? mainSetState;
+
+bool isUnblockable = true;
 
 class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   final BoxDecoration defaultDecor = BoxDecoration(
@@ -253,16 +269,15 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   late DateTime time;
   bool timeChosen = false;
   late DateTime startingTime;
-  
-  //bool onBreak = false;
-  //String timerText = "No active session";
-  //double timerBarScale = 1;
 
   final double defaultWidth = 450;
 
-  WidgetsBinding get widgetBinding => WidgetsBinding.instance;
+  final SnackBar denyBlock = SnackBar(
+    content: Text("Blocking has been disabled for this session.", style: TextStyle(color: Colors.white),),
+    backgroundColor: Colors.grey[900],
+  );
 
-  //void Function(void Function())? mainSetState;
+  WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
   @override
   void didChangeDependencies(){
@@ -298,15 +313,20 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                       builder: (context, Widget? child) {
                         return ElevatedButton(
                           onPressed: () async {
-                            if(currentlyBlocking){
-                              await openBreakDialog(context); //will probably need context here too
+                            if(currentlyBlocking && onBreak){
+                              breakTim.endTimer();
+                            } else if(currentlyBlocking){
+                              isUnblockable ? ScaffoldMessenger.of(context).showSnackBar(denyBlock) :
+                              await openBreakDialog(context);
                             } else{
                               await openBlockDialog(context);
                             }
                           },
                           child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: currentlyBlocking ? ButtonStates.blocked.widgets : ButtonStates.notBlocked.widgets
+                              children: currentlyBlocking && onBreak ? 
+                                ButtonStates.onBreak.widgets : currentlyBlocking ?
+                                ButtonStates.blocked.widgets : ButtonStates.notBlocked.widgets
                             ),
                         );
                       }
@@ -396,17 +416,20 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                   width: 586,
                   height: 399,
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 28, bottom: 14, right: 16, left: 6),
+                    padding: const EdgeInsets.only(bottom: 14, right: 20, left: 12),
                     child: Column(
                       children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text("Statistics:"),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10, bottom: 16),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Text("Statistics:", style: defaultText,),
+                          ),
                         ),
                         ListenableBuilder(
                           listenable: Listenable.merge([blockTim]),
                           builder: (context, child) {
-                            return HistoryBarChart();
+                            return Expanded(child: HistoryBarChart());
                           }
                         ), //TODO: update hours with new block info
                       ],
@@ -441,7 +464,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     int duration = 5;
     TimeOfDay selectedTime = TimeOfDay.now();
     bool timeChosen = false;
-    bool isUnblockable = true;
 
     List<DropdownMenuEntry> durationValues = List.generate(6, (index) => DropdownMenuEntry(
       value: index+1 > 3 ? 
@@ -731,15 +753,15 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
             endTime.hour * 3600 +
             endTime.minute * 60;
         } else{
-          duration = 
-            (endTime.hour - now.hour - 1) +
-            (endTime.minute - now.minute - 1) +
-            60 - now.second;
+          int hoursToAdd = (endTime.hour - now.hour - 1) * 3600;
+          hoursToAdd = hoursToAdd < 0 ? 0 : hoursToAdd;
+          int minutesToAdd = (endTime.minute - now.minute - 1) * 60;
+          minutesToAdd = minutesToAdd < 0 ? 0 : minutesToAdd;
+          duration = hoursToAdd + minutesToAdd + 60 - now.second;
         }
       }else{
         duration = fixedDuration! * 60;
       }
-      //duration = 15;
       blockTim.duration = duration;
       blockTim.startTimer();
     }
