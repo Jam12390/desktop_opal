@@ -19,7 +19,7 @@ Desktop_Opal requires:
 - Admin permission on launch to access and edit winreg.
 
 ## 🔽Installation
-- Download and extract the ShipReleasev1.0 folder from main.
+- Download and extract the ShipReleasev1.0 folder from releases.
 - Run desktop_opal.
 
 ## ❓How To Use (if you haven't looked at settings yet)
