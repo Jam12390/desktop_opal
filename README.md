@@ -20,7 +20,7 @@ Desktop_Opal requires:
 
 ## 🔽Installation
 - Download and extract the ShipReleasev1.0 folder from releases.
-- Run desktop_opal.
+- Run desktop_opal AS AN ADMIN. Running without initial admin perms will cause the API to not launch.
 
 ## ❓How To Use (if you haven't looked at settings yet)
 Blocking Apps:
