@@ -2,8 +2,6 @@
 
 A flutter app based off the iOS app Opal which aims to help you get work done without distractions!
 
-**NOTE: I am aware that there is no build for this. No matter what I did flutter would not build the windows version correctly so I've resorted to just uploading the source code.**
-
 ## Overview
 
 Desktop Opal (DO) is my personal version of the iOS app Opal which I made as I couldn't find any screen time management apps for windows which I liked. DO uses a flutter UI to interact with a python API backend using the winreg module to manage the DisallowRun key in the windows registry. Since that was a mouthful, it boils down to Flutter UI frontend --> Python API --> Windows Registry Management. The python API runs on port 8000 of the callback IP 127.0.0.1 and listens for post and get requests from the flutter UI.
