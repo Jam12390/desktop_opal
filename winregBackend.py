@@ -213,8 +213,8 @@ def checkForInstall(app: str):
         return False
 
 @api.get("/test")
-def test(a : int, b : int):
-    return {"result": a+b}
+def test(string : str):
+    print(string)
 
 def main():
     pass

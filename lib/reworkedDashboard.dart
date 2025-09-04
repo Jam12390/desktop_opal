@@ -7,6 +7,7 @@ import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:desktop_opal/main.dart' as mainScript;
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
+import 'package:path_provider/path_provider.dart';
 
 class Dashboard extends StatefulWidget{
   const Dashboard({super.key});
@@ -199,7 +200,7 @@ class BlockTimer with ChangeNotifier{
     );
   }
 
-  void updateBarChart(){
+  void updateBarChart() async {
     String formattedDate = funcs.formatDateToJson(null);
     if(mainScript.history[formattedDate] != null){
       mainScript.history[formattedDate] = double.parse((mainScript.history[formattedDate]! + timeToAdd/3600).toStringAsFixed(2));
@@ -210,7 +211,8 @@ class BlockTimer with ChangeNotifier{
       barDataKeys.add(formattedDate);
       barDataValues.add(mainScript.history[formattedDate]!);
     }
-    File("assets/barchartdata.json").writeAsStringSync(jsonEncode(mainScript.history));
+    Directory saveDir = await getApplicationDocumentsDirectory();
+    File("$saveDir/barchartdata.json").writeAsStringSync(jsonEncode(mainScript.history));
 }
 }
 
@@ -299,6 +301,11 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   void didChangeDependencies(){
     super.didChangeDependencies();
     widgetBinding.addObserver(this);
+  }
+
+  void initState(){
+    super.initState();
+    //File("assets/barchartdata.json").writeAsStringSync(jsonEncode(mainScript.history));
   }
 
   @override

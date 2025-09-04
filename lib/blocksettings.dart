@@ -8,6 +8,8 @@ import 'package:desktop_opal/main.dart' as mainScript;
 import 'package:desktop_opal/reworkedDashboard.dart' as dashboard;
 
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'constants/helpText.dart' as helpStrings;
 
 class BlockSettingsPage extends StatefulWidget{
   const BlockSettingsPage({super.key});
@@ -17,7 +19,6 @@ class BlockSettingsPage extends StatefulWidget{
 }
 
 class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindingObserver, TickerProviderStateMixin{
-  File settingsFile = File("assets/settings.json");
 
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
@@ -62,32 +63,42 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                   width: MediaQuery.of(context).size.width * (2/5),
                   height: MediaQuery.of(context).size.height - 146,
                   child: ListView(
-                    children: [
-                      ListTile(
-                        leading: Icon(Icons.dark_mode),
-                        title: Text("Dark Mode"),
-                        subtitle: Text("(Coming... at one point)"),
-                        trailing: Switch(
-                          value: mainScript.settings["darkMode"],
-                          onChanged: (value) {
-                            mainScript.settings["darkMode"] = value;
-                            setState(() {});
-                          }
-                        )
-                      ),
-                      ListTile(
-                        leading: Icon(Icons.restore),
-                        title: Text("The Uh Oh Button"),
-                        subtitle: Text("For when the windows registry decides you no longer have access to any apps"),
-                        trailing: IconButton(
-                          onPressed: () {
-                            http.post(Uri.parse("http://127.0.0.1:8000/wipeEntries"));
-                            dashboard.blockTim.endTimer();
-                            dashboard.breakTim.endTimer();
-                          },
-                          icon: Icon(Icons.restore)
-                        ),
-                      )
+                        children: [
+                          ListTile(
+                            leading: Icon(Icons.dark_mode),
+                            title: Text("Dark Mode"),
+                            subtitle: Text("(Coming... at one point)"),
+                            trailing: Switch(
+                              value: mainScript.settings["darkMode"],
+                              onChanged: (value) {
+                                mainScript.settings["darkMode"] = value;
+                                setState(() {});
+                              }
+                            )
+                          ),
+                          ListTile(
+                            leading: Icon(Icons.warning),
+                            title: Text("The Uh Oh Button"),
+                            subtitle: Text("For when the windows registry decides you no longer have access to any apps"),
+                            trailing: IconButton(
+                              onPressed: () {
+                                http.post(Uri.parse("http://127.0.0.1:8000/wipeEntries"));
+                                dashboard.blockTim.endTimer();
+                                dashboard.breakTim.endTimer();
+                              },
+                              icon: Icon(Icons.restore),
+                              tooltip: "Uh Oh",
+                            ),
+                          ),
+                          ListTile(
+                            leading: Icon(Icons.question_mark),
+                            title: Text("How To Use"),
+                            trailing: IconButton(
+                              onPressed: () async {await openHelpDialog(context);},
+                              icon: Icon(Icons.help),
+                              tooltip: "Open Help",
+                            ),
+                          )
                     ],
                   ),
                 ),
@@ -195,10 +206,60 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
         tooltip: "Apply Settings",
         onPressed: () async {
           mainScript.initialSettings = mainScript.settings;
-          settingsFile.writeAsStringSync(jsonEncode(mainScript.settings));
+          String saveDir = (await getApplicationDocumentsDirectory()).path;
+          File("$saveDir\\DesktopOpal\\settings.json").writeAsStringSync(jsonEncode(mainScript.settings));
         },
         child: Icon(Icons.save),
       ),
+    );
+  }
+
+  Future<void> openHelpDialog(BuildContext context) async{
+    return await showDialog(
+      context: context, 
+      builder: (context) {
+        return Dialog(
+          child: SizedBox(
+            width: 900,
+            height: 400,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text("How To Use", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),)
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          Align(alignment: Alignment.centerLeft, child: Text("Blocking Apps:", style: funcs.howToSubtitle,)),
+                          Text(helpStrings.Help.blockedHelp),
+                          Align(alignment: Alignment.centerLeft, child: Text("Break Time:", style: funcs.howToSubtitle,)),
+                          Text(helpStrings.Help.breakHelp),
+                          Align(alignment: Alignment.centerLeft, child: Text("Editing Blocked Apps:", style: funcs.howToSubtitle,)),
+                          Text(helpStrings.Help.editHelp),
+                          Align(alignment: Alignment.centerLeft, child: Text("Tools for editing apps:", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, decoration: TextDecoration.underline))),
+                          Text(helpStrings.Help.advEditHelp)
+                        ],
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text("Ok")
+                    ),
+                  )
+                ],
+              ),
+            ),
+          ),
+        );
+      }
     );
   }
 

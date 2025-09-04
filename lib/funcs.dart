@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'main.dart' as mainScript;
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 TextStyle defaultText = TextStyle(
   color: Colors.white, 
@@ -23,8 +25,16 @@ TextStyle graphTooltipText = TextStyle(
   color: Colors.white
 );
 
+TextStyle howToSubtitle = TextStyle(
+  fontSize: 20,
+  fontWeight: FontWeight.w600,
+  decoration: TextDecoration.underline,
+);
+
 Future<Map<String, type>> loadJsonFromFile<type>(String fileName) async{
-  return jsonDecode(await rootBundle.loadString("assets/$fileName")) as Map<String, type>;
+  //return jsonDecode(await rootBundle.loadString("assets/$fileName")) as Map<String, type>;
+  String saveDir = (await getApplicationDocumentsDirectory()).path;
+  return jsonDecode(File("$saveDir\\DesktopOpal\\$fileName").readAsStringSync())  as Map<String, type>;
 }
 
 String formatTimerRemaining(int timeRemaining){

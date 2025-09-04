@@ -7,7 +7,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:process_run/shell.dart';
 import 'dart:async';
-import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 Map<String, dynamic> settings = {};
 Map<String, dynamic> initialSettings = {};
@@ -57,8 +57,58 @@ String verifyFormat(String toCheck){
   return toCheck;
 }
 
+void checkForExistingFiles(String path, Shell shell) async{
+  try{
+    await shell.run("cd $path\\DesktopOpal");
+  } catch (_){
+    await shell.run("mkdir $path\\DesktopOpal");
+  }
+  if(!File("$path\\DesktopOpal\\settings.json").existsSync()){
+    await File("$path\\DesktopOpal\\settings.json").create();
+    File("$path\\DesktopOpal\\settings.json").writeAsStringSync(jsonEncode({'detectedApps': {}, 'enabledApps': [], 'excludedApps': [], 'blacklistedApps': [], 'darkMode': true}));
+  }
+  if(!File("$path\\DesktopOpal\\barchartdata.json").existsSync()){
+    await File("$path\\DesktopOpal\\barchartdata.json").create();
+    File("$path\\DesktopOpal\\barchartdata.json").writeAsStringSync(jsonEncode({}));
+  }
+}
+
+void ensureChartDataFilled(){
+  List<String> dayKeys = List.from(history.keys);
+  for(int index=0; index<dayKeys.length; index++){
+    
+    if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){ //covers if the final index is today
+      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+    } 
+    else if(index == dayKeys.length-1 || dayKeys.length == 1){ //covers if the final index isnt today
+      DateTime temp = DateTime.now();
+      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+      fillGaps(dayKeys[index], "${temp.day}/${temp.month}/${temp.year.toString().substring(2, 4)}", finalAddition: true);
+    } 
+    else if(decodeString(dayKeys[index]).add(Duration(days: 1)) == decodeString(dayKeys[index+1])){ //covers if index and index+1 are consecutive days
+      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+    } 
+    else {
+      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+      fillGaps(dayKeys[index], dayKeys[index+1]);
+    }
+  }
+
+  if(historyBuffer.isEmpty) historyBuffer.addAll({funcs.formatDateToJson(null): 0.0});
+
+  if(historyBuffer.length > 7){
+    dayKeys = List.from(historyBuffer.keys);
+    while(historyBuffer.length > 7){
+      historyBuffer.remove(dayKeys[0]);
+      dayKeys.removeAt(0);
+    }
+  }
+  history = historyBuffer;
+}
+
 void main() async{
   var shell = Shell();
+  shell.run(r'start winregBackend.exe');
   
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
@@ -76,11 +126,20 @@ void main() async{
     );
   }
 
+  String saveDir = (await getApplicationDocumentsDirectory()).path;
+  
+  checkForExistingFiles(saveDir, shell);
+
   settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
-  initialSettings = jsonDecode(jsonEncode(settings)); //makes a deep copy (unlinked) of the object
   history = (await funcs.loadJsonFromFile<dynamic>("barchartdata.json")).map((key, value) => MapEntry(key, double.parse(value.toString())),);
 
-  shell.run(r'start $pwd/../assets/winregBackend.py');
+  initialSettings = jsonDecode(jsonEncode(settings)); //makes a deep copy (unlinked) of the object
+
+  ensureChartDataFilled();
+
+  File("$saveDir\\DesktopOpal\\barchartdata.json").writeAsStringSync(jsonEncode(history));
+
+  //shell.run(r"start $pwd/../winregBackend.py");
 
   runApp(
     const MyApp()
@@ -110,41 +169,43 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => ReworkedMPState();
 }
 
+//void initValues() async{
+//  String saveDir = (await getApplicationDocumentsDirectory()).path;
+//  List<String> dayKeys = List.from(history.keys);
+//  for(int index=0; index<dayKeys.length; index++){
+//    
+//    if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){ //covers if the final index is today
+//      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+//    } 
+//    else if(index == dayKeys.length-1 || dayKeys.length == 1){ //covers if the final index isnt today
+//      DateTime temp = DateTime.now();
+//      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+//      fillGaps(dayKeys[index], "${temp.day}/${temp.month}/${temp.year.toString().substring(2, 4)}", finalAddition: true);
+//    } 
+//    else if(decodeString(dayKeys[index]).add(Duration(days: 1)) == decodeString(dayKeys[index+1])){ //covers if index and index+1 are consecutive days
+//      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+//    } 
+//    else {
+//      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
+//      fillGaps(dayKeys[index], dayKeys[index+1]);
+//    }
+//  }
+//
+//  if(historyBuffer.isEmpty) historyBuffer.addAll({funcs.formatDateToJson(null): 0.0});
+//
+//  if(historyBuffer.length > 7){
+//    dayKeys = List.from(historyBuffer.keys);
+//    while(historyBuffer.length > 7){
+//      historyBuffer.remove(dayKeys[0]);
+//      dayKeys.removeAt(0);
+//    }
+//  }
+//  history = historyBuffer;
+//  File("$saveDir\\DesktopOpal\\barchartdata.json").writeAsStringSync(jsonEncode(history));
+//}
+
 class ReworkedMPState extends State<MainPage> {
   Widget page = dashboard.Dashboard();
-
-  @override
-  void initState() {
-    super.initState();
-
-    List<String> dayKeys = List.from(history.keys);
-    for(int index=0; index<dayKeys.length; index++){
-      if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){ //covers if the final index is today
-        historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-      } else if(index == dayKeys.length-1 || dayKeys.length == 1){ //covers if the final index isnt today
-        DateTime temp = DateTime.now();
-        historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-        fillGaps(dayKeys[index], "${temp.day}/${temp.month}/${temp.year.toString().substring(2, 4)}", finalAddition: true);
-      } else if(decodeString(dayKeys[index]).add(Duration(days: 1)) == decodeString(dayKeys[index+1])){ //covers if index and index+1 are consecutive days
-        historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-      } else {
-        historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-        fillGaps(dayKeys[index], dayKeys[index+1]);
-      }
-    }
-  
-    if(historyBuffer.isEmpty) historyBuffer.addAll({funcs.formatDateToJson(null): 0.0});
-  
-    if(historyBuffer.length > 7){
-      dayKeys = List.from(historyBuffer.keys);
-      while(historyBuffer.length > 7){
-        historyBuffer.remove(dayKeys[0]);
-        dayKeys.removeAt(0);
-      }
-    }
-    history = historyBuffer;
-    File("assets/barchartdata.json").writeAsStringSync(jsonEncode(history));
-  }
 
   @override
   Widget build(BuildContext context){
