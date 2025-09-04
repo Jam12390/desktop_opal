@@ -12,22 +12,17 @@ Desktop Opal (DO) is my personal version of the iOS app Opal which I made as I c
 
 - Before entering a block session, close all apps which are going to be blocked since those that are open will be force quit.
 - While inside a block session, don't close the app OR the API, this will lock you out of any apps you blocked during that session.
-- Don't be dumb (i.e. Don't block any system processes)
+- Don't be dumb (i.e. Don't block any system processes).
 
 ## 🗒️Prerequisites
 Desktop_Opal requires:
-- Flutter >=3.8.1
-- Python >3.11
-- Desktop Development With C++ Package (Visual Studio 2022)
-- Admin perms to access winreg
+- Admin permission on launch to access and edit winreg.
 
 ## 🔽Installation
-- Clone repo
-- Open repo in an IDE (don't ask why its the only way the program runs - see NOTE)
-- Run IN DEBUG MODE (again - don't ask questions)
-- Allow changes to device
+- Download and extract the ShipReleasev1.0 folder from main.
+- Run desktop_opal.
 
-## ❓How To Use
+## ❓How To Use (if you haven't looked at settings yet)
 Blocking Apps:
 The block now button will open a prompt to select how long you want to block your apps for. These apps can be found in settings under blocked apps.
 Apps which have a tick next to them will be blocked during a session, anything else will be ignored.
@@ -55,6 +50,8 @@ In this dialog you can:
 
 # ❔FAQ
 
+**NOTE: Almost all of this is covered in the how to use section of settings. This is here in case of future updates.**
+
 **Help! All of my apps are still blocked even after my session has ended!**
 
 This is fine and probably happened because the app or API closed during a block session. The uhoh button in settings *should* fix this however if it doesn't:
@@ -64,14 +61,9 @@ This is fine and probably happened because the app or API closed during a block 
 - Delete ALL subkeys except (default)
 - OR Delete the DisallowRun key entirely (the program should recreate this key on startup - if it doesn't, manually create it again at this path)
 
-**Why do I have to run the app in debug?**
+**What's this python window that's showing up?**
 
-I thought I told you not to ask questions!
-Honestly, I don't know, I spent a couple hours trying my best to fix it (making a build) but nothing I tried worked. Running the app outside of debug *works*, but no window is shown.
-
-**How do I run flutter in debug mode?**
-
-On any of the scripts in lib just press F5! It should default to debug mode. If it either gives an error while compiling or runs without debug mode: close the app, make sure the desktop development with C++ package is updated and run it in debug from the VS Code side menu.
+Thats the API window, do not close it until you leave the app. Closing the python window will terminate the API and prevent any further interaction from the app with the windows registry.
 
 **Why did this take you 53 hours?**
 
