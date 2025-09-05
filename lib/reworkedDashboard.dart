@@ -182,13 +182,15 @@ class BlockTimer with ChangeNotifier{
     timerBarScale = duration! / initDuration;
   }
 
-  void endTimer(){
+  void endTimer() {
     if(timer!=null) timer!.cancel();
     timerText = "No Active Session";
     timerBarScale = 1;
     currentlyBlocking = false;
     onBreak = false;
-    (mainSetState == null) ? updateBarChart() : mainSetState!(() => updateBarChart());
+    updateBarChart();
+    if(mainSetState != null) mainSetState!(() {});
+    saveData();
     timeToAdd = 0;
     http.post(
       Uri.parse("http://127.0.0.1:8000/toggleBreak"),
@@ -200,7 +202,7 @@ class BlockTimer with ChangeNotifier{
     );
   }
 
-  void updateBarChart() async {
+  void updateBarChart() {
     String formattedDate = funcs.formatDateToJson(null);
     if(mainScript.history[formattedDate] != null){
       mainScript.history[formattedDate] = double.parse((mainScript.history[formattedDate]! + timeToAdd/3600).toStringAsFixed(2));
@@ -211,9 +213,12 @@ class BlockTimer with ChangeNotifier{
       barDataKeys.add(formattedDate);
       barDataValues.add(mainScript.history[formattedDate]!);
     }
-    Directory saveDir = await getApplicationDocumentsDirectory();
-    File("$saveDir/barchartdata.json").writeAsStringSync(jsonEncode(mainScript.history));
-}
+  }
+
+  void saveData() async {
+    String saveDir = (await getApplicationDocumentsDirectory()).path;
+    File("$saveDir\\DesktopOpal\\barchartdata.json").writeAsStringSync(jsonEncode(mainScript.history));
+  }
 }
 
 class BreakTimer with ChangeNotifier{
@@ -286,11 +291,13 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   final SnackBar denyBlock = SnackBar(
     content: Text("Blocking has been disabled for this session.", style: funcs.snackBarText),
     backgroundColor: Colors.grey[900],
+    duration: funcs.snackBarDuration,
   );
 
   final SnackBar noEntries = SnackBar(
     content: Text("No apps registered to block.", style: funcs.snackBarText),
     backgroundColor: Colors.grey[900],
+    duration: funcs.snackBarDuration,
   );
 
   List<double> sliderValues = List.filled(5, 0);
@@ -305,7 +312,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
 
   void initState(){
     super.initState();
-    //File("assets/barchartdata.json").writeAsStringSync(jsonEncode(mainScript.history));
   }
 
   @override
@@ -511,7 +517,10 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     return ((endTime.hour - currentTime.hour) * 60 + (endTime.minute - currentTime.minute)) * 60;
   }
 
-  bool isWaiting = false;
+  String formatUntilTime(TimeOfDay selectedTime){
+    String result = "${selectedTime.hour > 9 ? selectedTime.hour : "0${selectedTime.hour}"}:${selectedTime.minute > 9 ? selectedTime.minute : "0${selectedTime.minute}"}";
+    return result;
+  }
 
   Future<void> openBlockDialog(BuildContext context) async{
     late bool isFixedDuration = true;
@@ -580,7 +589,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text("Duration: ${isFixedDuration ? "" : 'Until ${selectedTime.hour}:${selectedTime.minute}'}"),
+                                    Text("Duration: ${isFixedDuration ? "" : 'Until ${formatUntilTime(selectedTime)}'}"),
                                     isFixedDuration ?
                                     DropdownMenu(
                                       initialSelection: 5,
@@ -658,13 +667,12 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
                               timeChosen = false,
                               closeDialog(blocked: false, isFixedDuration: false)
                               },
-                              child: Text("Nu uh")
+                              child: Text("Cancel")
                             ),
                             TextButton(
                               onPressed: () => closeDialog(blocked: true, isFixedDuration: isFixedDuration, fixedDuration: duration, endTime: selectedTime),
-                              child: Text("Yuh huh")
+                              child: Text("Start Blocking")
                             ),
-                            isWaiting ? CircularProgressIndicator() : Container(),
                           ],
                         )
                       )
@@ -807,7 +815,11 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
           int hoursToAdd = (endTime.hour - now.hour - 1) * 3600;
           hoursToAdd = hoursToAdd < 0 ? 0 : hoursToAdd;
           int minutesToAdd = (endTime.minute - now.minute - 1) * 60;
-          minutesToAdd = minutesToAdd < 0 ? 0 : minutesToAdd;
+          if(minutesToAdd < -1){
+            minutesToAdd = (60 - endTime.minute - now.minute - 1) * 60; //11:37, 12:00
+          } else if(minutesToAdd < 0){
+            minutesToAdd = 0;
+          }
           duration = hoursToAdd + minutesToAdd + 60 - now.second;
         }
       }else{

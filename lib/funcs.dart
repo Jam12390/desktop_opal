@@ -20,6 +20,8 @@ TextStyle snackBarText = TextStyle(
   color: Colors.white
 );
 
+Duration snackBarDuration = Duration(seconds: 2);
+
 TextStyle graphTooltipText = TextStyle(
   fontSize: 16,
   color: Colors.white

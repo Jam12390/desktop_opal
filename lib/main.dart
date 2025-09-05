@@ -169,41 +169,6 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => ReworkedMPState();
 }
 
-//void initValues() async{
-//  String saveDir = (await getApplicationDocumentsDirectory()).path;
-//  List<String> dayKeys = List.from(history.keys);
-//  for(int index=0; index<dayKeys.length; index++){
-//    
-//    if(index == dayKeys.length-1 && decodeString(dayKeys[index]) == DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)){ //covers if the final index is today
-//      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-//    } 
-//    else if(index == dayKeys.length-1 || dayKeys.length == 1){ //covers if the final index isnt today
-//      DateTime temp = DateTime.now();
-//      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-//      fillGaps(dayKeys[index], "${temp.day}/${temp.month}/${temp.year.toString().substring(2, 4)}", finalAddition: true);
-//    } 
-//    else if(decodeString(dayKeys[index]).add(Duration(days: 1)) == decodeString(dayKeys[index+1])){ //covers if index and index+1 are consecutive days
-//      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-//    } 
-//    else {
-//      historyBuffer.addAll({dayKeys[index]: history[dayKeys[index]]!});
-//      fillGaps(dayKeys[index], dayKeys[index+1]);
-//    }
-//  }
-//
-//  if(historyBuffer.isEmpty) historyBuffer.addAll({funcs.formatDateToJson(null): 0.0});
-//
-//  if(historyBuffer.length > 7){
-//    dayKeys = List.from(historyBuffer.keys);
-//    while(historyBuffer.length > 7){
-//      historyBuffer.remove(dayKeys[0]);
-//      dayKeys.removeAt(0);
-//    }
-//  }
-//  history = historyBuffer;
-//  File("$saveDir\\DesktopOpal\\barchartdata.json").writeAsStringSync(jsonEncode(history));
-//}
-
 class ReworkedMPState extends State<MainPage> {
   Widget page = dashboard.Dashboard();
 
@@ -252,8 +217,6 @@ class ReworkedMPState extends State<MainPage> {
   }
 
   Future<void> openUnsavedChangesDialog(BuildContext context, Widget attemptedTravelPage) async{
-    File settingsFile = File("assets/settings.json");
-
     return await showDialog(
       context: context,
       builder: (context) {
@@ -289,7 +252,8 @@ class ReworkedMPState extends State<MainPage> {
                                 initialSettings = jsonDecode(jsonEncode(settings));
                                 page = attemptedTravelPage;
                               });
-                              settingsFile.writeAsStringSync(jsonEncode(settings));
+                              String saveDir = (await getApplicationDocumentsDirectory()).path;
+                              File("$saveDir\\DesktopOpal\\settings.json").writeAsStringSync(jsonEncode(settings));
                             },
                             child: Text("Save Changes")
                           )

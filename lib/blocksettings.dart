@@ -355,6 +355,11 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
           mainScript.settings["excludedApps"].remove(executable);
         }
       });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Successfully deleted entry $executable!", style: funcs.snackBarText),
+        backgroundColor: Colors.grey[900],
+        duration: funcs.snackBarDuration,
+      ));
     }
 
     void addExecutable({required String executable}){
@@ -507,7 +512,15 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                             ),
                             IconButton(
                               onPressed: () {
-                                if(formKey.currentState!.validate()) addExecutable(executable: textController.text);
+                                if(formKey.currentState!.validate()) {
+                                  addExecutable(executable: textController.text);
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                    content: Text("Successfully added entry ${textController.text}!", style: funcs.snackBarText),
+                                    backgroundColor: Colors.grey[900],
+                                    duration: funcs.snackBarDuration,
+                                  ));
+                                  textController.clear();
+                                }
                               },
                               icon: Icon(Icons.arrow_right, color: Colors.white,)
                             )
