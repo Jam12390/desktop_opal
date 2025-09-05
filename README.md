@@ -18,7 +18,7 @@ Desktop_Opal requires:
 
 ## 🔽Installation
 - Download and extract the ShipReleasev1.0 folder from releases.
-- Run desktop_opal AS AN ADMIN. Running without initial admin perms will cause the API to not launch.
+- If you are running the app from a shortcut make sure you run it AS ADMIN, otherwise the API will not launch correctly. If the API doesn't launch for any other reason, either run the winregBackend.exe file before desktop_opal or run desktop_opal as an admin initially.
 
 ## ❓How To Use (if you haven't looked at settings yet)
 Blocking Apps:
