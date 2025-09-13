@@ -802,6 +802,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
           "values": categorisedApps[0]
         })
       );
+      await http.post(Uri.parse("http://127.0.0.1:8000/terminateBlockedApps"));
       if(!isFixedDuration){
         DateTime now = DateTime.now();
         if(checkIfNextDay(endTime!)){

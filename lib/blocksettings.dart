@@ -19,6 +19,8 @@ class BlockSettingsPage extends StatefulWidget{
 }
 
 class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindingObserver, TickerProviderStateMixin{
+  late TabController controller;
+  late TextEditingController textController;
 
   WidgetsBinding get widgetBinding => WidgetsBinding.instance;
 
@@ -29,8 +31,17 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
   }
 
   @override
+  void initState(){
+    super.initState();
+    controller = TabController(length: 2, vsync: this);
+    textController = TextEditingController();
+  }
+
+  @override
   void dispose(){
     widgetBinding.removeObserver(this);
+    controller.dispose();
+    textController.dispose();
     super.dispose();
   }
 
@@ -63,6 +74,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                   width: MediaQuery.of(context).size.width * (2/5),
                   height: MediaQuery.of(context).size.height - 146,
                   child: ListView(
+                    shrinkWrap: true,
                         children: [
                           ListTile(
                             leading: Icon(Icons.dark_mode),
@@ -320,12 +332,11 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
     Map<String, List<dynamic>> apps = {};
     Map<String, List<dynamic>> excludedApps = {};
 
-    TabController controller = TabController(length: 2, vsync: this);
-    final TextEditingController textController = TextEditingController();
-
     final formKey = GlobalKey<FormState>();
 
     void Function(void Function())? externalSetState;
+
+    bool test = false;
 
     void toggle(bool activate, String app){
       if(externalSetState != null){
@@ -498,15 +509,27 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                                   border: UnderlineInputBorder(),
                                   labelText: "Enter executable"
                                 ),
-                                validator: (value) {
+                                validator: (value) { //id prefer to use a switch case here however I cant due to switch case restricting the variable
                                   if(value == null || value.isEmpty){
                                     return "Enter a value";
+                                  } else if(value.contains("'") || value.contains('"')){
+                                    return "Speech marks aren't necessary.";
                                   } else if(value.substring((value.length-4).clamp(0, value.length), value.length) != ".exe"){
                                     return "Ensure your executable ends in .exe";
                                   } else if(mainScript.settings["blacklistedApps"].contains(value)){
                                     return "This app is blacklisted from blockable apps";
+                                  } else if(value.contains("\\") || value.contains("/")){
+                                    return "Don't enter the path to the application, just the exe";
+                                  } else if(mainScript.settings["detectedApps"].keys.contains(value)){
+                                    return "Value already exists in apps";
                                   }
                                   return null;
+                                },
+                                onFieldSubmitted: (value) {
+                                  if(formKey.currentState!.validate()){
+                                    addExecutable(executable: value);
+                                    textController.clear();
+                                  }
                                 },
                               ),
                             ),
@@ -532,23 +555,24 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            TextButton(
-                              onPressed: () => {
-                                controller.dispose(),
-                                textController.dispose(),
-                                closeDialog(saved: false)
-                              },
-                              child: Text("Cancel")
-                            ),
                             Padding(
                               padding: const EdgeInsets.only(left: 8),
                               child: TextButton(
                                 onPressed: () => {
-                                  controller.dispose(),
-                                  textController.dispose(),
-                                  closeDialog(saved: true, enabledApps: apps, excludedApps: excludedApps)
+                                  if(formKey.currentState!.validate()){
+                                    addExecutable(executable: textController.text),
+                                    textController.clear()
+                                  } else{
+                                    test = true
+                                  },
+                                  if(test){
+                                    test = false,
+                                    //controller.dispose(),
+                                    //textController.dispose(),
+                                    closeDialog(saved: true, enabledApps: apps, excludedApps: excludedApps)
+                                  }
                                 },
-                                child: Text("Ok")
+                                child: Text("Close Menu")
                               ),
                             )
                           ],
@@ -574,13 +598,13 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
   }
 
   void closeDialog({required bool saved, Map<String, List<dynamic>>? enabledApps, Map<String, List<dynamic>>? excludedApps}){
+    Navigator.pop(context);
     if(saved){
       setState(() {
         mainScript.settings["excludedApps"] = extractAppsFromMap(excludedApps ?? {});
         mainScript.settings["enabledApps"] = extractAppsFromMap(enabledApps ?? {});
       });
     }
-    Navigator.pop(context);
   }
 }
 

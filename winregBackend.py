@@ -23,6 +23,8 @@ from pydantic import BaseModel
 import win32com.client
 import pythoncom
 import sys, getpass
+import pathlib
+from datetime import datetime
 
 api = fastapi.FastAPI()
 
@@ -32,6 +34,8 @@ appBlacklist = [
 ]
 
 keysBuffer = []
+
+errorLog = ""
 
 class RegRequest(BaseModel):
     values: list[str]
@@ -52,32 +56,49 @@ def checkForAdmin():
     except:
         return False
 
+def formatErrorLog(logtype: str, log: str):
+    return f"\n{datetime.today().strftime(r"%Y/%m/%d")} [{logtype}]: {log}"
+
+@api.post("/initLog")
+def initLog():
+    global errorLog
+    path = f"{pathlib.Path.home()}/Documents/DesktopOpal/ErrorLog.txt"
+    errorLog = open(path, "a")
+
 @api.post("/initRegCheck")
 def initialPolicyCheck():
     location = winreg.HKEY_CURRENT_USER
     try:
-        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_SET_VALUE)
-        winreg.CloseKey(keyPath)
-    except OSError as e:
-        soft = winreg.OpenKey(location, r"SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES", 0, winreg.KEY_WRITE)
-        explorerPolicyLocation = winreg.CreateKey(soft, "EXPLORER")
-        winreg.SetValueEx(explorerPolicyLocation, "DisallowRun", 0, winreg.REG_DWORD, 1)
-        winreg.CreateKey(explorerPolicyLocation, "DisallowRun")
-        winreg.CloseKey(explorerPolicyLocation)
-        winreg.CloseKey(soft)
+        try:
+            keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_SET_VALUE)
+            winreg.CloseKey(keyPath)
+        except OSError as e:
+            soft = winreg.OpenKey(location, r"SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES", 0, winreg.KEY_WRITE)
+            explorerPolicyLocation = winreg.CreateKey(soft, "EXPLORER")
+            winreg.SetValueEx(explorerPolicyLocation, "DisallowRun", 0, winreg.REG_DWORD, 1)
+            winreg.CreateKey(explorerPolicyLocation, "DisallowRun")
+            winreg.CloseKey(explorerPolicyLocation)
+            winreg.CloseKey(soft)
+    except Exception as e:
+        errorLog.write(formatErrorLog(logtype="CRITICAL ERROR"), log=f"WINDOWS REGISTRY FAILED TO OPEN: {e}.") #uh oh
+        os.system("tskill desktop_opal") #yeah no the app can't run without that - TODO: maybe add an alert here for user?
+        exit()
 
-@api.post("/terminateBlockedApps") #TODO: implement in actual program, shouldn't be too hard
+@api.post("/terminateBlockedApps")
 def terminateBlockedApps():
-    location = winreg.HKEY_CURRENT_USER
-    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DISALLOWRUN", 0, winreg.KEY_READ)
-    blockedApps = []
-    for key in range(1, winreg.QueryInfoKey(keyPath)[1]+1):
-        blockedApps.append(winreg.QueryValueEx(keyPath, str(key))[0])
-    openApps = psutil.process_iter()
-    for process in openApps:
-        if process.name() in blockedApps:
-            process.terminate()
-    winreg.CloseKey(keyPath)
+    location = winreg.HKEY_CURRENT_USER #TODO: implement some return values for management in the dart script i.e. if termination fails we're fine but if blocking/unblocking fails then we're screwed
+    try:
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DISALLOWRUN", 0, winreg.KEY_READ)
+        blockedApps = []
+        for key in range(1, winreg.QueryInfoKey(keyPath)[1]+1):
+            blockedApps.append(winreg.QueryValueEx(keyPath, str(key))[0])
+        winreg.CloseKey(keyPath)
+        for app in blockedApps:
+            print(f"Killing {app} using 'tskill {app[:-4]}'.")
+            os.system(f"tskill '{app[:-4]}'")
+    except Exception as e:
+        errorLog.write(formatErrorLog(logtype="WARNING", log=f"Apps failed to terminate due to {e}."))
+
 
 @api.post("/toggleBreak")
 def toggleBreak(params: BreakRequest):
@@ -92,7 +113,11 @@ def toggleBreak(params: BreakRequest):
 def createAppValues(params: RegRequest):
     valuesToCreate = params.values
     location = winreg.HKEY_CURRENT_USER
-    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_ALL_ACCESS)
+    try:
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_ALL_ACCESS)
+    except Exception as e:
+        errorLog.write(formatErrorLog(logtype="ERROR", log=f"Winreg path failed to open due to {e}."))
+        return -1
     try:
         winreg.SetValueEx(keyPath, "DisallowRun", 0, winreg.REG_DWORD, 1)
         keyPath = winreg.CreateKey(keyPath, "DisallowRun")
@@ -124,9 +149,16 @@ def createAppValues(params: RegRequest):
 
 @api.post("/deleteRegKeys")
 def deleteKeys(params: RegRequest):
+    initialPolicyCheck()
     valuesToDelete = params.values
     location = winreg.HKEY_CURRENT_USER
-    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
+    try:
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
+    except Exception as e:
+        errorLog.write(formatErrorLog(logtype="CRITICAL ERROR", log=f"FAILED TO UNBLOCK APPS DUE TO {e}. CONSULT THE UH OH BUTTON."))
+        wipeEntries()
+        os.system("tskill desktop_opal")
+        exit()
     numberOfValues = winreg.QueryInfoKey(keyPath)[1]
     preExistingValues = [
         winreg.EnumValue(keyPath, i)[1]
@@ -151,37 +183,34 @@ def decreaseFurtherValues(startingValue : int, numberOfValues : int, keyPath : w
 @api.post("/wipeEntries")
 def wipeEntries():
     location = winreg.HKEY_CURRENT_USER
-    keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
     try:
-        numberOfValues = winreg.QueryInfoKey(keyPath)[1]
-        for key in range(1, numberOfValues):
-            winreg.DeleteKey(keyPath, str(key))
-        os.system("gpupdate /target:user")
-        winreg.CloseKey(keyPath)
-        return 0
-    except:
-        winreg.CloseKey(keyPath)
-        return -1
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
+        try:
+            numberOfValues = winreg.QueryInfoKey(keyPath)[1]
+            for key in range(1, numberOfValues):
+                winreg.DeleteKey(keyPath, str(key))
+            os.system("gpupdate /target:user")
+            winreg.CloseKey(keyPath)
+            return 0
+        except:
+            winreg.CloseKey(keyPath)
+            return -1
+    except Exception as e:
+        errorLog.write(formatErrorLog(logtype="OH NO", log=f"THE UH OH BUTTON HAS FAILED, PLEASE CONSULT THE MANUAL FIX FOR WIPING ENTRIES AND REPORT TO THE GITHUB REPO. {e}"))
 
 
 @api.get("/checkForDesktopExecutables")
 def getAutoExecutables():
-    desktopPath = os.path.join(os.path.join(os.environ["USERPROFILE"]), "OneDrive\\Desktop")
-    publicDesktopPath = "C:\\Users\\Public\\Desktop"
+    potentialPaths = [
+        os.path.join(os.path.join(os.environ["USERPROFILE"]), "OneDrive\\Desktop"),
+        os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop"),
+        "C:\\Users\\Public\\Desktop"
+    ]
+    for path in potentialPaths:
+        combinedExecutables += getExecutables(files=createList(path=path), path=path) #TODO: continue here
 
-    print("User:", getpass.getuser())
-    print("CWD:", os.getcwd())
-    print("Desktop path:", desktopPath)
-
-    publicExecutables = getExecutables(files=createList(path=publicDesktopPath), path=publicDesktopPath)
-    otherExecutables = getExecutables(files=createList(path=desktopPath), path=desktopPath)
-    combinedExecutables = []
-
-    for i in publicExecutables:
-        combinedExecutables.append(i)
-    for i in otherExecutables:
-        if i not in combinedExecutables:
-            combinedExecutables.append(i)
+    if len(combinedExecutables) == 0:
+        errorLog.write(formatErrorLog(logtype="WARNING", log="No executables located at common desktop paths."))
     return combinedExecutables
 
 def getExecutables(files: list, path: str):

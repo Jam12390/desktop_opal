@@ -6,6 +6,9 @@ import 'main.dart' as mainScript;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
+late String debugFilePath;
+late File debugFile;
+
 TextStyle defaultText = TextStyle(
   color: Colors.white, 
   fontSize: 20
@@ -32,6 +35,11 @@ TextStyle howToSubtitle = TextStyle(
   fontWeight: FontWeight.w600,
   decoration: TextDecoration.underline,
 );
+
+void initDebugFile() async{
+  debugFilePath = (await getApplicationDocumentsDirectory()).path;
+  debugFile = File("$debugFilePath\\DesktopOpal\\ErrorLog.txt");
+}
 
 Future<Map<String, type>> loadJsonFromFile<type>(String fileName) async{
   //return jsonDecode(await rootBundle.loadString("assets/$fileName")) as Map<String, type>;
@@ -66,4 +74,8 @@ String formatDateToJson(DateTime? toEncode){
   toEncode ??= DateTime.now();
   String result = "${toEncode.day < 10 ? "0${toEncode.day}" : toEncode.day}/${toEncode.month < 10 ? "0${toEncode.month}" : toEncode.month}/${toEncode.year.toString().substring(2, 4)}";
   return result;
+}
+
+void updateErrorLog({required String logType, required String log}){
+  debugFile.writeAsStringSync("\n${DateTime.now()} [$logType]: $log", mode: FileMode.append);
 }

@@ -58,18 +58,32 @@ String verifyFormat(String toCheck){
 }
 
 void checkForExistingFiles(String path, Shell shell) async{
+  List<String> missingFiles = [];
   try{
     await shell.run("cd $path\\DesktopOpal");
   } catch (_){
     await shell.run("mkdir $path\\DesktopOpal");
   }
-  if(!File("$path\\DesktopOpal\\settings.json").existsSync()){
-    await File("$path\\DesktopOpal\\settings.json").create();
-    File("$path\\DesktopOpal\\settings.json").writeAsStringSync(jsonEncode({'detectedApps': {}, 'enabledApps': [], 'excludedApps': [], 'blacklistedApps': [], 'darkMode': true}));
+  path = "$path\\DesktopOpal";
+  if(!File("$path\\settings.json").existsSync()){
+    missingFiles.add("settings.json");
   }
-  if(!File("$path\\DesktopOpal\\barchartdata.json").existsSync()){
-    await File("$path\\DesktopOpal\\barchartdata.json").create();
-    File("$path\\DesktopOpal\\barchartdata.json").writeAsStringSync(jsonEncode({}));
+  if(!File("$path\\barchartdata.json").existsSync()){
+    missingFiles.add("barchartdata.json");
+  }
+  if(!File("$path\\ErrorLog.txt").existsSync()){
+    missingFiles.add("ErrorLog.txt");
+  }
+  for(String fileName in missingFiles){
+    funcs.updateErrorLog(logType: "NOTICE", log:"File $fileName not found, creating instance at $path\\$fileName");
+    try{
+      await File("$path\\$fileName").create();
+      if(fileName.substring(fileName.length-5, fileName.length) == ".json"){
+        File("$path\\$fileName").writeAsStringSync(jsonEncode({}));
+      }
+    } catch(e) {
+      funcs.updateErrorLog(logType: "ERROR", log:"File $fileName failed to create due to error: $e");
+    }
   }
 }
 
@@ -108,7 +122,6 @@ void ensureChartDataFilled(){
 
 void main() async{
   var shell = Shell();
-  shell.run(r'start winregBackend.exe');
   
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
@@ -129,9 +142,26 @@ void main() async{
   String saveDir = (await getApplicationDocumentsDirectory()).path;
   
   checkForExistingFiles(saveDir, shell);
+  funcs.initDebugFile();
 
-  settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
-  history = (await funcs.loadJsonFromFile<dynamic>("barchartdata.json")).map((key, value) => MapEntry(key, double.parse(value.toString())),);
+  try{
+    settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
+  } catch(e){
+    funcs.updateErrorLog(logType: "WARNING", log: "Settings file could not be read due to reason $e. Resetting values.");
+    settings = {
+      "detectedApps": {},
+      "enabledApps": [],
+      "excludedApps": [],
+      "blacklistedApps": [],
+      "darkMode": false
+    };
+  }
+  try{
+    history = (await funcs.loadJsonFromFile<dynamic>("barchartdata.json")).map((key, value) => MapEntry(key, double.parse(value.toString())),);
+  } catch(e){
+    funcs.updateErrorLog(logType: "WARNING", log: "Bar chart history could not be read due to reason $e. Resetting history.");
+    history = {};
+  }
 
   initialSettings = jsonDecode(jsonEncode(settings)); //makes a deep copy (unlinked) of the object
 
@@ -139,7 +169,12 @@ void main() async{
 
   File("$saveDir\\DesktopOpal\\barchartdata.json").writeAsStringSync(jsonEncode(history));
 
-  //shell.run(r"start $pwd/../winregBackend.py");
+  //shell.run(r'start winregBackend.exe');
+  try{
+    shell.run(r"start $pwd/../winregBackend.py");
+  } catch (e) {
+    funcs.updateErrorLog(logType: "ERROR", log: "Backend failed to start with exception $e");
+  }
 
   runApp(
     const MyApp()
@@ -253,7 +288,25 @@ class ReworkedMPState extends State<MainPage> {
                                 page = attemptedTravelPage;
                               });
                               String saveDir = (await getApplicationDocumentsDirectory()).path;
-                              File("$saveDir\\DesktopOpal\\settings.json").writeAsStringSync(jsonEncode(settings));
+                              try{
+                                fndkfjdkfnkfndkfdn; //testing error
+                                File("$saveDir\\DesktopOpal\\settings.json").writeAsStringSync(jsonEncode(settings));
+                              } catch(e){
+                                funcs.updateErrorLog(logType: "ERROR", log: "Failed to save settings due to $e");
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 16),
+                                          child: Icon(Icons.warning, color: Colors.white,),
+                                        ),
+                                        Text("Settings failed to save. Please try again or consult the error log for more info.")
+                                      ],
+                                    )
+                                  )
+                                  );
+                              }
                             },
                             child: Text("Save Changes")
                           )
