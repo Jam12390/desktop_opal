@@ -35,8 +35,6 @@ appBlacklist = [
 
 keysBuffer = []
 
-errorLog = ""
-
 class RegRequest(BaseModel):
     values: list[str]
 
@@ -80,8 +78,8 @@ def initialPolicyCheck():
             winreg.CloseKey(explorerPolicyLocation)
             winreg.CloseKey(soft)
     except Exception as e:
-        errorLog.write(formatErrorLog(logtype="CRITICAL ERROR"), log=f"WINDOWS REGISTRY FAILED TO OPEN: {e}.") #uh oh
-        os.system("tskill desktop_opal") #yeah no the app can't run without that - TODO: maybe add an alert here for user?
+        errorLog.write(formatErrorLog(logtype="CRITICAL ERROR", log=f"WINDOWS REGISTRY FAILED TO OPEN: {e}.")) #uh oh
+        os.system("Stop-Process -Name 'desktop_opal'") #yeah no the app can't run without that - TODO: maybe add an alert here for user?
         exit()
 
 @api.post("/terminateBlockedApps")
@@ -94,8 +92,8 @@ def terminateBlockedApps():
             blockedApps.append(winreg.QueryValueEx(keyPath, str(key))[0])
         winreg.CloseKey(keyPath)
         for app in blockedApps:
-            print(f"Killing {app} using 'tskill {app[:-4]}'.")
-            os.system(f"tskill '{app[:-4]}'")
+            print(f"Killing {app} using 'Stop-Process -Name '{app[:-4]}''.")
+            os.system(f"Stop-Process -Name '{app[:-4]}'")
     except Exception as e:
         errorLog.write(formatErrorLog(logtype="WARNING", log=f"Apps failed to terminate due to {e}."))
 
@@ -157,7 +155,7 @@ def deleteKeys(params: RegRequest):
     except Exception as e:
         errorLog.write(formatErrorLog(logtype="CRITICAL ERROR", log=f"FAILED TO UNBLOCK APPS DUE TO {e}. CONSULT THE UH OH BUTTON."))
         wipeEntries()
-        os.system("tskill desktop_opal")
+        os.system("Stop-Process -Name 'desktop_opal'")
         exit()
     numberOfValues = winreg.QueryInfoKey(keyPath)[1]
     preExistingValues = [
@@ -206,6 +204,8 @@ def getAutoExecutables():
         os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop"),
         "C:\\Users\\Public\\Desktop"
     ]
+    combinedExecutables = []
+
     for path in potentialPaths:
         combinedExecutables += getExecutables(files=createList(path=path), path=path) #TODO: continue here
 

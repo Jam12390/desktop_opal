@@ -11,6 +11,13 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'constants/helpText.dart' as helpStrings;
 
+
+Map<String, bool> shownErrors = {
+  "notices": true,
+  "warnings": false,
+  "errors": false,
+  "criticalErrors": false};
+
 class BlockSettingsPage extends StatefulWidget{
   const BlockSettingsPage({super.key});
 
@@ -73,35 +80,47 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                   ),
                   width: MediaQuery.of(context).size.width * (2/5),
                   height: MediaQuery.of(context).size.height - 146,
-                  child: ListView(
-                    shrinkWrap: true,
+                  child: Column(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.amber
+                        ),
+                        height: MediaQuery.of(context).size.height - 396,
+                        child: ListView(
+                          shrinkWrap: true,
+                            children: [
+                              ListTile(
+                                leading: Icon(Icons.dark_mode),
+                                title: Text("Dark Mode"),
+                                subtitle: Text("(Coming... at one point)"),
+                                trailing: Switch(
+                                  value: mainScript.settings["darkMode"],
+                                  onChanged: (value) {
+                                    mainScript.settings["darkMode"] = value;
+                                    setState(() {});
+                                  }
+                                )
+                              ),
+                              ListTile(
+                                leading: Icon(Icons.warning),
+                                title: Text("The Uh Oh Button"),
+                                subtitle: Text("For when the windows registry decides you no longer have access to any apps"),
+                                trailing: IconButton(
+                                  onPressed: () {
+                                    http.post(Uri.parse("http://127.0.0.1:8000/wipeEntries"));
+                                    dashboard.blockTim.endTimer();
+                                    dashboard.breakTim.endTimer();
+                                  },
+                                  icon: Icon(Icons.restore),
+                                  tooltip: "Uh Oh",
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Wrap(
                         children: [
-                          ListTile(
-                            leading: Icon(Icons.dark_mode),
-                            title: Text("Dark Mode"),
-                            subtitle: Text("(Coming... at one point)"),
-                            trailing: Switch(
-                              value: mainScript.settings["darkMode"],
-                              onChanged: (value) {
-                                mainScript.settings["darkMode"] = value;
-                                setState(() {});
-                              }
-                            )
-                          ),
-                          ListTile(
-                            leading: Icon(Icons.warning),
-                            title: Text("The Uh Oh Button"),
-                            subtitle: Text("For when the windows registry decides you no longer have access to any apps"),
-                            trailing: IconButton(
-                              onPressed: () {
-                                http.post(Uri.parse("http://127.0.0.1:8000/wipeEntries"));
-                                dashboard.blockTim.endTimer();
-                                dashboard.breakTim.endTimer();
-                              },
-                              icon: Icon(Icons.restore),
-                              tooltip: "Uh Oh",
-                            ),
-                          ),
                           ListTile(
                             leading: Icon(Icons.question_mark),
                             title: Text("How To Use"),
@@ -110,7 +129,18 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                               icon: Icon(Icons.help),
                               tooltip: "Open Help",
                             ),
+                          ),
+                          ListTile(
+                            leading: Icon(Icons.bug_report),
+                            title: Text("Error Logs"),
+                            trailing: IconButton(
+                              onPressed: () async {await openErrorLogDialog(context);},
+                              icon: Icon(Icons.developer_mode),
+                              tooltip: "Open Error Log",
+                            ),
                           )
+                        ]
+                      )
                     ],
                   ),
                 ),
@@ -567,8 +597,6 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                                   },
                                   if(test){
                                     test = false,
-                                    //controller.dispose(),
-                                    //textController.dispose(),
                                     closeDialog(saved: true, enabledApps: apps, excludedApps: excludedApps)
                                   }
                                 },
@@ -578,6 +606,136 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                           ],
                         ),
                       ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+        );
+      }
+    );
+  }
+
+  Future<void> openErrorLogDialog(BuildContext context) async{
+    String logPath = "${(await getApplicationDocumentsDirectory()).path}\\DesktopOpal\\ErrorLog.txt";
+    List<String> allErrors = File(logPath).readAsLinesSync();
+    
+    Map<String, List<ErrorTile>> errors = {
+      "notices": [],
+      "warnings": [],
+      "errors": [],
+      "criticalErrors": []
+    };
+
+    allErrors.removeAt(0);
+
+    for(String error in allErrors){
+      String errorType = error.split("]")[0].substring(1); //Splits the error into [0] - [$error and [1] - $log, taking [$error after the first character as the error type
+      switch(errorType){
+        case("NOTICE"):
+          errors["notices"]!.add(ErrorTile(error: error));
+          break;
+        case("WARNING"):
+          errors["warnings"]!.add(ErrorTile(error: error));
+          break;
+        case("ERROR"):
+          errors["errors"]!.add(ErrorTile(error: error));
+          break;
+        case("CRITICAL ERROR" || "OH NO"):
+          errors["criticalErrors"]!.add(ErrorTile(error: error));
+          break;
+        default:
+          errors["notices"]!.add(ErrorTile(error: error));
+          break;
+      }
+    }
+
+    Function(void Function())? externalSetState;
+    List<String> errorTypes = List.from(errors.keys);
+
+    List<Widget> generateErrorList(){
+      print("e");
+      List<Widget> errorList = [];
+      for(String key in errorTypes){
+        if(shownErrors[key]!) errorList.addAll(errors[key]!);
+      }
+      return errorList.isEmpty ? [Text("No errors to show (yay!).", style: funcs.errorTitle,)] : errorList;
+    }
+
+    List<Widget> listChildren = [];
+
+    void toggleVisibility({required String errorTypeToToggle}){
+      //shownErrors[errorTypeToToggle] = !shownErrors[errorTypeToToggle]!;
+      listChildren = generateErrorList();
+    }
+
+    void test({required String errorTypeToToggle}){
+      print("rebuilt");
+      toggleVisibility(errorTypeToToggle: errorTypeToToggle);
+    }
+
+    //List<FilterButton> buttons = List.generate(errorTypes.length, (index) {
+    //  return FilterButton(
+    //    title: errorTypes[index],
+    //    enabled: errorTypes[index] == "notices" ? true : false,
+    //    toggleFunction: () => toggleVisibility(errorTypeToToggle: errorTypes[index]),
+    //    externalSetState: externalSetState
+    //  );
+    //}); //TODO: generate a list of filterbuttons using a list with errors.keys i.e. (errors.length, (index) {errors.keys[index] .......})
+
+    return await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            externalSetState = setState;
+            listChildren = generateErrorList();
+            List<FilterButton> buttons = List.generate(errorTypes.length, (index) {
+              return FilterButton(
+                title: errorTypes[index],
+                enabled: errorTypes[index] == "notices" ? true : false,
+                toggleFunction: () => toggleVisibility(errorTypeToToggle: errorTypes[index]),
+                externalSetState: externalSetState
+              );
+            });
+            return Dialog(
+              child: SizedBox(
+                width: 800,
+                height: 600,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Text("Error Logs"),
+                      Row(
+                        children: buttons,
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.all(Radius.circular(16)),
+                          color: Colors.grey[900]
+                        ),
+                        width: 968,
+                        height: 300,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: ListView(
+                            shrinkWrap: true,
+                            children: listChildren
+                          ),
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text("Close")
+                          )
+                        ],
+                      )
                     ],
                   ),
                 ),
@@ -643,5 +801,88 @@ class EditDialogListTile extends StatelessWidget{
           ],
         ),
       );
+  }
+}
+
+class FilterButton extends StatefulWidget{
+  const FilterButton({super.key, required this.title, required this.enabled, required this.toggleFunction, required this.externalSetState});
+
+  final String title;
+  final bool enabled;
+  final void Function() toggleFunction;
+  final Function(void Function())? externalSetState;
+
+  @override
+  State<FilterButton> createState() => FilterButtonState(enabled: enabled);
+}
+
+class FilterButtonState extends State<FilterButton>{
+  FilterButtonState({required this.enabled});
+
+  bool enabled;
+  late Color colour;
+
+  @override
+  void dispose(){
+    super.dispose();
+  }
+
+  @override
+  void initState(){
+    super.initState();
+    colour = widget.enabled ? Colors.blue[400]! : Colors.grey[900]!;
+  }
+
+  @override
+  Widget build(BuildContext context){
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          color: colour
+        ),
+        width: 125,
+        height: 30,
+        child: TextButton(
+          onPressed: () {
+            setState(() {
+              enabled = !enabled;
+              colour = enabled ? Colors.blue[400]! : Colors.grey[900]!;
+              shownErrors[widget.title] = !shownErrors[widget.title]!;
+            });
+            widget.externalSetState!(() => widget.toggleFunction());
+          },
+          child: Text(widget.title),
+        ),
+      )
+    );
+  }
+}
+
+class ErrorTile extends StatelessWidget{
+  const ErrorTile({super.key, required this.error});
+  
+  final String error;
+
+  @override
+  Widget build(BuildContext context){
+    final List<String> errorComponents = [ //in order: errortype, datetime, error
+      error.split(" ")[0],
+      "${error.split(": ")[0].split(" ")[1]} ${error.split(": ")[0].split(" ")[2].split(".")[0]}",
+      error.split(": ")[1]
+    ];
+    return SizedBox(
+      height: 125,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("${errorComponents[1]} - ${errorComponents[0]}:", style: funcs.errorTitle,),
+          SingleChildScrollView(
+            child: Text(errorComponents[2]),
+          )
+        ],
+      ),
+    );
   }
 }

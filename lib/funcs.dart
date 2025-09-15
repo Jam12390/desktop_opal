@@ -36,6 +36,12 @@ TextStyle howToSubtitle = TextStyle(
   decoration: TextDecoration.underline,
 );
 
+TextStyle errorTitle = TextStyle(
+  fontSize: 18,
+  fontWeight: FontWeight.bold,
+  decoration: TextDecoration.underline
+);
+
 void initDebugFile() async{
   debugFilePath = (await getApplicationDocumentsDirectory()).path;
   debugFile = File("$debugFilePath\\DesktopOpal\\ErrorLog.txt");
@@ -77,5 +83,5 @@ String formatDateToJson(DateTime? toEncode){
 }
 
 void updateErrorLog({required String logType, required String log}){
-  debugFile.writeAsStringSync("\n${DateTime.now()} [$logType]: $log", mode: FileMode.append);
+  debugFile.writeAsStringSync("\n[$logType] ${DateTime.now()}: $log", mode: FileMode.append);
 }

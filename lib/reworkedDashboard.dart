@@ -310,6 +310,7 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
     widgetBinding.addObserver(this);
   }
 
+  @override
   void initState(){
     super.initState();
   }

@@ -171,7 +171,8 @@ void main() async{
 
   //shell.run(r'start winregBackend.exe');
   try{
-    shell.run(r"start $pwd/../winregBackend.py");
+    print("die");
+    //shell.run(r"start $pwd/../winregBackend.py");
   } catch (e) {
     funcs.updateErrorLog(logType: "ERROR", log: "Backend failed to start with exception $e");
   }
@@ -205,7 +206,8 @@ class MainPage extends StatefulWidget {
 }
 
 class ReworkedMPState extends State<MainPage> {
-  Widget page = dashboard.Dashboard();
+  //Widget page = dashboard.Dashboard();
+  Widget page = blockSettings.BlockSettingsPage();
 
   @override
   Widget build(BuildContext context){
@@ -289,7 +291,7 @@ class ReworkedMPState extends State<MainPage> {
                               });
                               String saveDir = (await getApplicationDocumentsDirectory()).path;
                               try{
-                                fndkfjdkfnkfndkfdn; //testing error
+                                //fndkfjdkfnkfndkfdn; //testing error
                                 File("$saveDir\\DesktopOpal\\settings.json").writeAsStringSync(jsonEncode(settings));
                               } catch(e){
                                 funcs.updateErrorLog(logType: "ERROR", log: "Failed to save settings due to $e");
