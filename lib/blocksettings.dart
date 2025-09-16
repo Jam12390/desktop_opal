@@ -663,6 +663,16 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
       return errorList.isEmpty ? [Text("No errors to show (yay!).", style: funcs.errorTitle,)] : errorList;
     }
 
+    List<String> filterButtonTitles = List.generate(errorTypes.length, (index) {
+      String toReturn = "";
+      if(errorTypes[index] == "criticalErrors"){
+        toReturn = "Critical Errors";
+      } else{
+        toReturn = "${errorTypes[index][0].toUpperCase()}${errorTypes[index].substring(1).toLowerCase()}";
+      }
+      return toReturn;
+    });
+
     List<Widget> listChildren = [];
 
     void toggleVisibility({required String errorTypeToToggle}){
@@ -670,19 +680,8 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
       listChildren = generateErrorList();
     }
 
-    void test({required String errorTypeToToggle}){
-      print("rebuilt");
-      toggleVisibility(errorTypeToToggle: errorTypeToToggle);
-    }
-
-    //List<FilterButton> buttons = List.generate(errorTypes.length, (index) {
-    //  return FilterButton(
-    //    title: errorTypes[index],
-    //    enabled: errorTypes[index] == "notices" ? true : false,
-    //    toggleFunction: () => toggleVisibility(errorTypeToToggle: errorTypes[index]),
-    //    externalSetState: externalSetState
-    //  );
-    //}); //TODO: generate a list of filterbuttons using a list with errors.keys i.e. (errors.length, (index) {errors.keys[index] .......})
+    double dialogWidth = 800;
+    double dialogHeight = 400;
 
     return await showDialog(
       context: context,
@@ -693,22 +692,27 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
             listChildren = generateErrorList();
             List<FilterButton> buttons = List.generate(errorTypes.length, (index) {
               return FilterButton(
-                title: errorTypes[index],
+                title: filterButtonTitles[index],
                 enabled: errorTypes[index] == "notices" ? true : false,
                 toggleFunction: () => toggleVisibility(errorTypeToToggle: errorTypes[index]),
-                externalSetState: externalSetState
+                externalSetState: externalSetState,
+                width: dialogWidth * 0.02 * filterButtonTitles[index].length, //TODO: idea - multiply a percentage by the length of the title for varying width
+                overrideWidth: errorTypes[index] == "criticalErrors" ? 125 : null,
               );
             });
             return Dialog(
               child: SizedBox(
-                width: 800,
-                height: 600,
+                width: dialogWidth,
+                height: dialogHeight,
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      Text("Error Logs"),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text("Error Logs", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white, decoration: TextDecoration.underline),)
+                      ),
                       Row(
                         children: buttons,
                       ),
@@ -717,8 +721,8 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                           borderRadius: BorderRadius.all(Radius.circular(16)),
                           color: Colors.grey[900]
                         ),
-                        width: 968,
-                        height: 300,
+                        width: dialogWidth,
+                        height: dialogHeight*(0.6),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: ListView(
@@ -805,12 +809,14 @@ class EditDialogListTile extends StatelessWidget{
 }
 
 class FilterButton extends StatefulWidget{
-  const FilterButton({super.key, required this.title, required this.enabled, required this.toggleFunction, required this.externalSetState});
+  const FilterButton({super.key, required this.title, required this.enabled, required this.toggleFunction, required this.externalSetState, required this.width, this.overrideWidth});
 
   final String title;
   final bool enabled;
   final void Function() toggleFunction;
   final Function(void Function())? externalSetState;
+  final double width;
+  final double? overrideWidth;
 
   @override
   State<FilterButton> createState() => FilterButtonState(enabled: enabled);
@@ -836,20 +842,25 @@ class FilterButtonState extends State<FilterButton>{
   @override
   Widget build(BuildContext context){
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.all(Radius.circular(16)),
           color: colour
         ),
-        width: 125,
+        width: widget.overrideWidth ?? widget.width, //use overrideWidth if defined during initialisation, otherwise use default width
         height: 30,
         child: TextButton(
           onPressed: () {
             setState(() {
               enabled = !enabled;
               colour = enabled ? Colors.blue[400]! : Colors.grey[900]!;
-              shownErrors[widget.title] = !shownErrors[widget.title]!;
+              List<String> shownErrorKeySplit = widget.title.toLowerCase().split(" ");
+              String shownErrorKey = shownErrorKeySplit[0];
+              for(int x=1; x < shownErrorKeySplit.length; x++){
+                shownErrorKey += "${shownErrorKeySplit[x][0].toUpperCase()}${shownErrorKeySplit[x].substring(1)}";
+              }
+              shownErrors[shownErrorKey] = !shownErrors[shownErrorKey]!;
             });
             widget.externalSetState!(() => widget.toggleFunction());
           },
