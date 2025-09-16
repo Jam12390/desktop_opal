@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:desktop_opal/blocksettings.dart' as blockSettings;
 import 'package:desktop_opal/reworkedDashboard.dart' as dashboard;
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:process_run/shell.dart';
@@ -207,7 +208,7 @@ class MainPage extends StatefulWidget {
 
 class ReworkedMPState extends State<MainPage> {
   //Widget page = dashboard.Dashboard();
-  Widget page = blockSettings.BlockSettingsPage();
+  Widget page = dashboard.Dashboard();
 
   @override
   Widget build(BuildContext context){

@@ -33,7 +33,11 @@ TextStyle graphTooltipText = TextStyle(
 TextStyle howToSubtitle = TextStyle(
   fontSize: 20,
   fontWeight: FontWeight.w600,
-  decoration: TextDecoration.underline,
+);
+
+TextStyle helpText = TextStyle(
+  fontSize: 16,
+  color: Colors.deepPurpleAccent[300]
 );
 
 TextStyle errorTitle = TextStyle(

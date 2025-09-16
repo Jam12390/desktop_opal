@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:desktop_opal/main.dart' as mainScript;
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:path_provider/path_provider.dart';
@@ -275,7 +276,7 @@ Function(void Function())? mainSetState;
 
 bool breaksAllowed = true;
 
-class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
+class DashboardState extends State<Dashboard> with SingleTickerProviderStateMixin{
   final BoxDecoration defaultDecor = BoxDecoration(
     color: Colors.grey[900],
     borderRadius: BorderRadius.all(Radius.circular(16))
@@ -302,14 +303,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
 
   List<double> sliderValues = List.filled(5, 0);
 
-  WidgetsBinding get widgetBinding => WidgetsBinding.instance;
-
-  @override
-  void didChangeDependencies(){
-    super.didChangeDependencies();
-    widgetBinding.addObserver(this);
-  }
-
   @override
   void initState(){
     super.initState();
@@ -318,7 +311,6 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   @override
   void dispose(){
     super.dispose();
-    widgetBinding.removeObserver(this);
     mainSetState = null;
   }
 
@@ -337,170 +329,172 @@ class DashboardState extends State<Dashboard> with WidgetsBindingObserver{
   Widget build(BuildContext context){
     mainSetState = setState;
     return Scaffold(
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Dashboard:", style: funcs.titleText,),
-                  SizedBox(
-                    width: currentlyBlocking && onBreak ?
-                          ButtonStates.onBreak.buttonWidth : currentlyBlocking ?
-                          ButtonStates.blocked.buttonWidth :
-                          ButtonStates.notBlocked.buttonWidth,
-                    height: 64,
-                    child: ListenableBuilder(
-                      listenable: Listenable.merge([blockTim, breakTim]),
-                      builder: (context, Widget? child) {
-                        return ElevatedButton(
-                          onPressed: () async {
-                            if(currentlyBlocking && onBreak){
-                              breakTim.endTimer();
-                            } else if(currentlyBlocking){
-                              !breaksAllowed ? ScaffoldMessenger.of(context).showSnackBar(denyBlock) :
-                              await openBreakDialog(context);
-                            } else{
-                              checkForBlockEntries() ? await openBlockDialog(context) :
-                              ScaffoldMessenger.of(context).showSnackBar(noEntries);
-                            }
-                          },
-                          child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: currentlyBlocking && onBreak ? 
-                                ButtonStates.onBreak.widgets : currentlyBlocking ?
-                                ButtonStates.blocked.widgets : ButtonStates.notBlocked.widgets
-                            ),
-                        );
-                      }
-                    ),
-                  )
-                ],
+      body: Animate(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Dashboard:", style: funcs.titleText,),
+                    SizedBox(
+                      width: currentlyBlocking && onBreak ?
+                            ButtonStates.onBreak.buttonWidth : currentlyBlocking ?
+                            ButtonStates.blocked.buttonWidth :
+                            ButtonStates.notBlocked.buttonWidth,
+                      height: 64,
+                      child: ListenableBuilder(
+                        listenable: Listenable.merge([blockTim, breakTim]),
+                        builder: (context, Widget? child) {
+                          return ElevatedButton(
+                            onPressed: () async {
+                              if(currentlyBlocking && onBreak){
+                                breakTim.endTimer();
+                              } else if(currentlyBlocking){
+                                !breaksAllowed ? ScaffoldMessenger.of(context).showSnackBar(denyBlock) :
+                                await openBreakDialog(context);
+                              } else{
+                                checkForBlockEntries() ? await openBlockDialog(context) :
+                                ScaffoldMessenger.of(context).showSnackBar(noEntries);
+                              }
+                            },
+                            child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: currentlyBlocking && onBreak ? 
+                                  ButtonStates.onBreak.widgets : currentlyBlocking ?
+                                  ButtonStates.blocked.widgets : ButtonStates.notBlocked.widgets
+                              ),
+                          );
+                        }
+                      ),
+                    )
+                  ],
+                ),
               ),
             ),
-          ),
-          Divider(
-            height: 50,
-          ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16, bottom: 8, left: 16, right: 8),
-                    child: ListenableBuilder(
-                      listenable: Listenable.merge([blockTim, breakTim]),
-                      builder: (context, Widget? child) {
-                        return Column(
-                          children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey[900],
-                                borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16))
-                              ),
-                              width: defaultWidth,
-                              height: 65,
-                              child: Align(
-                                alignment: Alignment.topLeft,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 10, top: 10),
-                                  child: Text(timerText, style: funcs.defaultText,),
-                                )
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.cyan[400],
-                                    borderRadius: currentlyBlocking?
-                                      BorderRadius.only(bottomLeft: Radius.circular(16)) :
-                                      BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16))
-                                  ),
-                                  height: 10,
-                                  width: defaultWidth * timerBarScale,
+            Divider(
+              height: 50,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 8, left: 16, right: 8),
+                      child: ListenableBuilder(
+                        listenable: Listenable.merge([blockTim, breakTim]),
+                        builder: (context, Widget? child) {
+                          return Column(
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[900],
+                                  borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16))
                                 ),
-                                currentlyBlocking ?
+                                width: defaultWidth,
+                                height: 65,
+                                child: Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 10, top: 10),
+                                    child: Text(timerText, style: funcs.defaultText,),
+                                  )
+                                ),
+                              ),
+                              Row(
+                                children: [
                                   Container(
                                     decoration: BoxDecoration(
-                                      color: Colors.cyan[800],
-                                      borderRadius: BorderRadius.only(bottomRight: Radius.circular(16))
+                                      color: Colors.cyan[400],
+                                      borderRadius: currentlyBlocking?
+                                        BorderRadius.only(bottomLeft: Radius.circular(16)) :
+                                        BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16))
                                     ),
-                                    width: defaultWidth * (1 - timerBarScale),
                                     height: 10,
-                                  ) :
-                                  Container()
-                              ],
-                            )
-                          ],
-                        );
-                      }
+                                    width: defaultWidth * timerBarScale,
+                                  ),
+                                  currentlyBlocking ?
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.cyan[800],
+                                        borderRadius: BorderRadius.only(bottomRight: Radius.circular(16))
+                                      ),
+                                      width: defaultWidth * (1 - timerBarScale),
+                                      height: 10,
+                                    ) :
+                                    Container()
+                                ],
+                              )
+                            ],
+                          );
+                        }
+                      ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 16, left: 16, right: 8),
-                    child: Container(
-                      decoration: defaultDecor,
-                      width: defaultWidth,
-                      height: 308,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 16, left: 16, right: 8),
+                      child: Container(
+                        decoration: defaultDecor,
+                        width: defaultWidth,
+                        height: 308,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 16, top: 8),
+                                child: Text("oooo Sliders (i forgot what i wanted to put here)", style: funcs.defaultText,),
+                              )
+                            ),
+                            for(int x=0; x<5; x++) Slider(value: sliderValues[x], onChanged: (value) {
+                              sliderValues[x] = value;
+                              setState(() {});
+                            })
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 16, bottom: 16, left: 8, right: 16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      borderRadius: BorderRadius.all(Radius.circular(16))
+                    ),
+                    width: 586,
+                    height: 399,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 14, right: 20, left: 12),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 16, top: 8),
-                              child: Text("oooo Sliders (i forgot what i wanted to put here)", style: funcs.defaultText,),
-                            )
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10, bottom: 16),
+                            child: Align(
+                              alignment: Alignment.topLeft,
+                              child: Text("Statistics (Time Blocked):", style: funcs.defaultText,),
+                            ),
                           ),
-                          for(int x=0; x<5; x++) Slider(value: sliderValues[x], onChanged: (value) {
-                            sliderValues[x] = value;
-                            setState(() {});
-                          })
+                          ListenableBuilder(
+                            listenable: Listenable.merge([blockTim]),
+                            builder: (context, child) {
+                              return Expanded(child: HistoryBarChart());
+                            }
+                          ),
                         ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 16, bottom: 16, left: 8, right: 16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[900],
-                    borderRadius: BorderRadius.all(Radius.circular(16))
-                  ),
-                  width: 586,
-                  height: 399,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 14, right: 20, left: 12),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10, bottom: 16),
-                          child: Align(
-                            alignment: Alignment.topLeft,
-                            child: Text("Statistics (Time Blocked):", style: funcs.defaultText,),
-                          ),
-                        ),
-                        ListenableBuilder(
-                          listenable: Listenable.merge([blockTim]),
-                          builder: (context, child) {
-                            return Expanded(child: HistoryBarChart());
-                          }
-                        ),
-                      ],
                     ),
-                  ),
-                  ),
-              )
-            ],
-          ),
-        ],
+                )
+              ],
+            ),
+          ],
+        ).animate().fadeIn(duration: Duration(seconds: 1)).moveY(begin: -30, end: 0, curve: Curves.easeOut), //TODO: make this separate for all widgets top to bottom
       ),
     );
   }

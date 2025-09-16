@@ -82,68 +82,70 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                   ),
                   width: MediaQuery.of(context).size.width * (2/5),
                   height: MediaQuery.of(context).size.height - 146,
-                  child: Column(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.amber
-                        ),
-                        height: MediaQuery.of(context).size.height - 396,
-                        child: ListView(
-                          shrinkWrap: true,
-                            children: [
-                              ListTile(
-                                leading: Icon(Icons.dark_mode),
-                                title: Text("Dark Mode"),
-                                subtitle: Text("(Coming... at one point)"),
-                                trailing: Switch(
-                                  value: mainScript.settings["darkMode"],
-                                  onChanged: (value) {
-                                    mainScript.settings["darkMode"] = value;
-                                    setState(() {});
-                                  }
-                                )
-                              ),
-                              ListTile(
-                                leading: Icon(Icons.warning),
-                                title: Text("The Uh Oh Button"),
-                                subtitle: Text("For when the windows registry decides you no longer have access to any apps"),
-                                trailing: IconButton(
-                                  onPressed: () {
-                                    http.post(Uri.parse("http://127.0.0.1:8000/wipeEntries"));
-                                    dashboard.blockTim.endTimer();
-                                    dashboard.breakTim.endTimer();
-                                  },
-                                  icon: Icon(Icons.restore),
-                                  tooltip: "Uh Oh",
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height - 396,
+                          child: ListView(
+                            shrinkWrap: true,
+                              children: [
+                                ListTile(
+                                  leading: Icon(Icons.dark_mode),
+                                  title: Text("Dark Mode"),
+                                  subtitle: Text("(Coming... at one point)"),
+                                  trailing: Switch(
+                                    value: mainScript.settings["darkMode"],
+                                    onChanged: (value) {
+                                      mainScript.settings["darkMode"] = value;
+                                      setState(() {});
+                                    }
+                                  )
                                 ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      Wrap(
-                        children: [
-                          ListTile(
-                            leading: Icon(Icons.question_mark),
-                            title: Text("How To Use"),
-                            trailing: IconButton(
-                              onPressed: () async {await openHelpDialog(context);},
-                              icon: Icon(Icons.help),
-                              tooltip: "Open Help",
-                            ),
+                                ListTile(
+                                  leading: Icon(Icons.warning),
+                                  title: Text("The Uh Oh Button"),
+                                  subtitle: Text("For when the windows registry decides you no longer have access to any apps"),
+                                  trailing: IconButton(
+                                    onPressed: () {
+                                      http.post(Uri.parse("http://127.0.0.1:8000/wipeEntries"));
+                                      dashboard.blockTim.endTimer();
+                                      dashboard.breakTim.endTimer();
+                                    },
+                                    icon: Icon(Icons.restore),
+                                    tooltip: "Uh Oh",
+                                  ),
+                                ),
+                            ],
                           ),
-                          ListTile(
-                            leading: Icon(Icons.bug_report),
-                            title: Text("Error Logs"),
-                            trailing: IconButton(
-                              onPressed: () async {await openErrorLogDialog(context);},
-                              icon: Icon(Icons.developer_mode),
-                              tooltip: "Open Error Log",
+                        ),
+                        Wrap(
+                          children: [
+                            Divider(height: 20,),
+                            ListTile(
+                              leading: Icon(Icons.question_mark),
+                              title: Text("How To Use"),
+                              trailing: IconButton(
+                                onPressed: () async {await openHelpDialog(context);},
+                                icon: Icon(Icons.help),
+                                tooltip: "Open Help",
+                              ),
                             ),
-                          )
-                        ]
-                      )
-                    ],
+                            ListTile(
+                              leading: Icon(Icons.bug_report),
+                              title: Text("Error Logs"),
+                              trailing: IconButton(
+                                onPressed: () async {await openErrorLogDialog(context);},
+                                icon: Icon(Icons.developer_mode),
+                                tooltip: "Open Error Log",
+                              ),
+                            )
+                          ]
+                        )
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -275,22 +277,47 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                     alignment: Alignment.centerLeft,
                     child: Text("How To Use", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),)
                   ),
+                  Divider(),
                   Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          Align(alignment: Alignment.centerLeft, child: Text("Blocking Apps:", style: funcs.howToSubtitle,)),
-                          Text(helpStrings.Help.blockedHelp),
-                          Align(alignment: Alignment.centerLeft, child: Text("Break Time:", style: funcs.howToSubtitle,)),
-                          Text(helpStrings.Help.breakHelp),
-                          Align(alignment: Alignment.centerLeft, child: Text("Editing Blocked Apps:", style: funcs.howToSubtitle,)),
-                          Text(helpStrings.Help.editHelp),
-                          Align(alignment: Alignment.centerLeft, child: Text("Tools for editing apps:", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, decoration: TextDecoration.underline))),
-                          Text(helpStrings.Help.advEditHelp)
-                        ],
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900],
+                        borderRadius: BorderRadius.all(Radius.circular(16)),
+                        //border: Border.all(color: Colors.grey[600]!)
+                      ),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            //Align(alignment: Alignment.centerLeft, child: Text("Blocking Apps:", style: funcs.howToSubtitle,)),
+                            //Text(helpStrings.Help.blockedHelp),
+                            ExpandableText(
+                              header: Text("Blocking Apps:",
+                              style: funcs.howToSubtitle),
+                              content: Text(helpStrings.Help.blockedHelp, style: funcs.helpText,),
+                              backgroundColour: Colors.grey[900]!,
+                              borderOverride: BorderRadius.only(topLeft: Radius.circular(5), topRight: Radius.circular(5)),
+                            ),
+                            ExpandableText(
+                              header: Text("Break Time:", style: funcs.howToSubtitle),
+                              content: Text(helpStrings.Help.breakHelp, style: funcs.helpText,),
+                              backgroundColour: Colors.grey[900]!
+                            ),
+                            ExpandableText(
+                              header: Text("Editing Blocked Apps:", style: funcs.howToSubtitle),
+                              content: Text(helpStrings.Help.editHelp, style: funcs.helpText,),
+                              backgroundColour: Colors.grey[900]!
+                            ),
+                            ExpandableText(
+                              header: Text("Tools for editing apps:", style: funcs.howToSubtitle),
+                              content: Text(helpStrings.Help.advEditHelp, style: funcs.helpText,),
+                              backgroundColour: Colors.grey[900]!
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
+                  Divider(),
                   Align(
                     alignment: Alignment.bottomRight,
                     child: TextButton(
@@ -703,7 +730,6 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
     double dialogHeight = 400;
 
     return await showDialog(
-      barrierDismissible: false,
       context: context,
       builder: (context) {
         return StatefulBuilder(
@@ -755,7 +781,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton(
-                            onPressed: onPressed,
+                            onPressed: () async {await openWipeConfirmDialog(context);},
                             child: Text("Wipe Logs")
                           ),
                           TextButton(
@@ -799,8 +825,8 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
   }
 
   Future<void> openWipeConfirmDialog(BuildContext context) async {
-    final double dialogWidth = 400;
-    final double dialogHeight = 200;
+    final double dialogWidth = 350;
+    final double dialogHeight = 100;
 
     return await showDialog(
       context: context,
@@ -809,10 +835,39 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
           child: SizedBox(
             width: dialogWidth,
             height: dialogHeight,
-            child: Column(
-              children: [//TODO: here
-
-              ],
+            child: Padding(
+              padding: const EdgeInsets.only(
+                top: 16,
+                left: 18,
+                right: 8,
+                bottom: 8
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [//TODO: here
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text("Are you sure you want to wipe the error log?")
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          String logPath = "${(await getApplicationDocumentsDirectory()).path}\\DesktopOpal\\ErrorLog.txt";
+                          File(logPath).writeAsStringSync("");
+                        },
+                        child: Text("Yes")
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text("No")
+                      )
+                    ],
+                  )
+                ],
+              ),
             ),
           ),
         );
@@ -955,6 +1010,74 @@ class ErrorTile extends StatelessWidget{
           )
         ],
       ),
+    );
+  }
+}
+
+class ExpandableText extends StatefulWidget{
+  const ExpandableText({super.key, required this.header, required this.content, required this.backgroundColour, this.borderOverride});
+
+  final Widget header;
+  final Widget content;
+  final Color backgroundColour;
+  final BorderRadius? borderOverride;
+
+  State<ExpandableText> createState() => ExpandableTextState();
+}
+
+class ExpandableTextState extends State<ExpandableText>{
+  ValueNotifier<bool> expanded = ValueNotifier(false);
+  double rotation = 0;
+
+  Widget build(BuildContext context){
+    return ValueListenableBuilder(
+      valueListenable: expanded,
+      builder: (context, values, _) {
+        return Container(
+            decoration: BoxDecoration(
+              //border: Border.symmetric(horizontal: BorderSide(color: Colors.grey[600]!))
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Column(
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: widget.borderOverride ?? BorderRadius.all(Radius.zero)),
+                      backgroundColor: Colors.grey[900],
+                      elevation: 0
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          widget.header,
+                          AnimatedRotation(
+                            turns: rotation,
+                            duration: Duration(milliseconds: 200),
+                            child: Icon(Icons.keyboard_arrow_up),
+                          ),
+                        ],
+                      ),
+                    ),
+                    onPressed: () {
+                      rotation += expanded.value ? -0.5 : 0.5;
+                      expanded.value = !expanded.value;
+                    },
+                  ),
+                  expanded.value ? 
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12, right: 12, top: 8),
+                    child: widget.content,
+                  ) :
+                  Container()
+                ],
+              ),
+            ),
+          );
+      }
     );
   }
 }
