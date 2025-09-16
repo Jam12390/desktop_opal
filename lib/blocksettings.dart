@@ -18,6 +18,8 @@ Map<String, bool> shownErrors = {
   "errors": false,
   "criticalErrors": false};
 
+List<String> allErrors = [];
+
 class BlockSettingsPage extends StatefulWidget{
   const BlockSettingsPage({super.key});
 
@@ -619,7 +621,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
 
   Future<void> openErrorLogDialog(BuildContext context) async{
     String logPath = "${(await getApplicationDocumentsDirectory()).path}\\DesktopOpal\\ErrorLog.txt";
-    List<String> allErrors = File(logPath).readAsLinesSync();
+    allErrors = File(logPath).readAsLinesSync();
     
     Map<String, List<ErrorTile>> errors = {
       "notices": [],
@@ -628,28 +630,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
       "criticalErrors": []
     };
 
-    allErrors.removeAt(0);
-
-    for(String error in allErrors){
-      String errorType = error.split("]")[0].substring(1); //Splits the error into [0] - [$error and [1] - $log, taking [$error after the first character as the error type
-      switch(errorType){
-        case("NOTICE"):
-          errors["notices"]!.add(ErrorTile(error: error));
-          break;
-        case("WARNING"):
-          errors["warnings"]!.add(ErrorTile(error: error));
-          break;
-        case("ERROR"):
-          errors["errors"]!.add(ErrorTile(error: error));
-          break;
-        case("CRITICAL ERROR" || "OH NO"):
-          errors["criticalErrors"]!.add(ErrorTile(error: error));
-          break;
-        default:
-          errors["notices"]!.add(ErrorTile(error: error));
-          break;
-      }
-    }
+    if(allErrors.isNotEmpty) allErrors.removeAt(0);
 
     Function(void Function())? externalSetState;
     List<String> errorTypes = List.from(errors.keys);
@@ -675,15 +656,54 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
 
     List<Widget> listChildren = [];
 
-    void toggleVisibility({required String errorTypeToToggle}){
-      //shownErrors[errorTypeToToggle] = !shownErrors[errorTypeToToggle]!;
-      listChildren = generateErrorList();
+    void deleteError({required String error, required String errorType}){
+      externalSetState!(() {
+        allErrors.remove(error);
+        errors[errorType]!.removeWhere((errTile) => errTile.error == error);
+        listChildren = generateErrorList();
+      });
+    }
+
+    void wipeLog(){
+      externalSetState!(() {
+        errors = {
+          "notices": [],
+          "warnings": [],
+          "errors": [],
+          "criticalErrors": []
+        };
+        allErrors = [];
+        listChildren = [];
+        File(logPath).writeAsStringSync("");
+      });
+    }
+
+    for(String error in allErrors){
+      String errorType = error.split("]")[0].substring(1); //Splits the error into [0] - [$error and [1] - $log, taking [$error after the first character as the error type
+      switch(errorType){
+        case("NOTICE"):
+          errors["notices"]!.add(ErrorTile(error: error, deleteFunction: () => deleteError(error: error, errorType: "notices"),));
+          break;
+        case("WARNING"):
+          errors["warnings"]!.add(ErrorTile(error: error, deleteFunction: () => deleteError(error: error, errorType: "warnings")));
+          break;
+        case("ERROR"):
+          errors["errors"]!.add(ErrorTile(error: error, deleteFunction: () => deleteError(error: error, errorType: "errors")));
+          break;
+        case("CRITICAL ERROR" || "OH NO"):
+          errors["criticalErrors"]!.add(ErrorTile(error: error, deleteFunction: () => deleteError(error: error, errorType: "criticalErrors")));
+          break;
+        default:
+          errors["notices"]!.add(ErrorTile(error: error, deleteFunction: () => deleteError(error: error, errorType: "notices")));
+          break;
+      }
     }
 
     double dialogWidth = 800;
     double dialogHeight = 400;
 
     return await showDialog(
+      barrierDismissible: false,
       context: context,
       builder: (context) {
         return StatefulBuilder(
@@ -694,7 +714,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
               return FilterButton(
                 title: filterButtonTitles[index],
                 enabled: errorTypes[index] == "notices" ? true : false,
-                toggleFunction: () => toggleVisibility(errorTypeToToggle: errorTypes[index]),
+                toggleFunction: () => listChildren = generateErrorList(),
                 externalSetState: externalSetState,
                 width: dialogWidth * 0.02 * filterButtonTitles[index].length, //TODO: idea - multiply a percentage by the length of the title for varying width
                 overrideWidth: errorTypes[index] == "criticalErrors" ? 125 : null,
@@ -735,7 +755,16 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton(
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: onPressed,
+                            child: Text("Wipe Logs")
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              String write = "";
+                              for(String error in allErrors) {write += "\n$error";}
+                              File(logPath).writeAsStringSync(write);
+                            },
                             child: Text("Close")
                           )
                         ],
@@ -767,6 +796,28 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
         mainScript.settings["enabledApps"] = extractAppsFromMap(enabledApps ?? {});
       });
     }
+  }
+
+  Future<void> openWipeConfirmDialog(BuildContext context) async {
+    final double dialogWidth = 400;
+    final double dialogHeight = 200;
+
+    return await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          child: SizedBox(
+            width: dialogWidth,
+            height: dialogHeight,
+            child: Column(
+              children: [//TODO: here
+
+              ],
+            ),
+          ),
+        );
+      }
+    );
   }
 }
 
@@ -872,9 +923,10 @@ class FilterButtonState extends State<FilterButton>{
 }
 
 class ErrorTile extends StatelessWidget{
-  const ErrorTile({super.key, required this.error});
+  const ErrorTile({super.key, required this.error, required this.deleteFunction});
   
   final String error;
+  final VoidCallback deleteFunction;
 
   @override
   Widget build(BuildContext context){
@@ -888,7 +940,16 @@ class ErrorTile extends StatelessWidget{
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("${errorComponents[1]} - ${errorComponents[0]}:", style: funcs.errorTitle,),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("${errorComponents[1]} - ${errorComponents[0]}:", style: funcs.errorTitle,),
+              IconButton(
+                onPressed: deleteFunction, //TODO: implement deletion of specific errors
+                icon: Icon(Icons.delete)
+              )
+            ],
+          ),
           SingleChildScrollView(
             child: Text(errorComponents[2]),
           )
