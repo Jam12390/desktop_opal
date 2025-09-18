@@ -1,18 +1,5 @@
 import os
-try:
-    import psutil
-    import shutil
-    import winreg
-    import uvicorn
-    import fastapi
-    import ctypes, sys
-    from pydantic import BaseModel
-    import win32com.client
-    import pythoncom
-    import sys, getpass
-except:
-    os.system("pip install -r requirements.txt")
-
+import threading
 import psutil
 import shutil
 import winreg
@@ -34,6 +21,8 @@ appBlacklist = [
 ]
 
 keysBuffer = []
+
+errorLog = ""
 
 class RegRequest(BaseModel):
     values: list[str]
@@ -60,8 +49,10 @@ def formatErrorLog(logtype: str, log: str):
 @api.post("/initLog")
 def initLog():
     global errorLog
-    path = f"{pathlib.Path.home()}/Documents/DesktopOpal/ErrorLog.txt"
+    path = f"{pathlib.Path.home()}\\Documents\\DesktopOpal\\ErrorLog.txt"
+    print(path)
     errorLog = open(path, "a")
+    print(errorLog)
 
 @api.post("/initRegCheck")
 def initialPolicyCheck():
@@ -106,6 +97,14 @@ def killFixedProcess(toKill : str, restart : bool):
             process.terminate()
             if restart:
                 os.system(toKill)
+
+@api.post("/kill")
+def killSelf():
+    for process in psutil.process_iter(["name"]):
+        if process.info["name"] == "desktop_opal.exe":
+            process.terminate()
+            ctypes.windll.user32.MessageBoxW(0, "Registry wipe failed: Please consult manual wipe in 'how to use' section and report exception to repo.", "ERROR", 1)
+            server.should_exit = True
 
 @api.post("/toggleBreak")
 def toggleBreak(params: BreakRequest):
@@ -191,7 +190,7 @@ def decreaseFurtherValues(startingValue : int, numberOfValues : int, keyPath : w
         winreg.DeleteValue(keyPath, str(upperValue))
         winreg.SetValueEx(keyPath, str(upperValue-1), 0, winreg.REG_SZ, str(upperValueName))
 
-@api.post("/wipeEntries")
+@api.get("/wipeEntries")
 def wipeEntries():
     location = winreg.HKEY_CURRENT_USER
     try:
@@ -202,11 +201,13 @@ def wipeEntries():
                 winreg.DeleteKey(keyPath, str(key))
             #killFixedProcess(toKill="explorer.exe", restart=True)
             winreg.CloseKey(keyPath)
-            return 0
+            return []
         except:
             winreg.CloseKey(keyPath)
-            return -1
+            return []
     except Exception as e:
+        print("b")
+        return ["OH NO", f"THE UH OH BUTTON HAS FAILED, PLEASE CONSULT THE MANUAL FIX FOR WIPING ENTRIES AND REPORT TO THE GITHUB REPO. {e}"]
         errorLog.write(formatErrorLog(logtype="OH NO", log=f"THE UH OH BUTTON HAS FAILED, PLEASE CONSULT THE MANUAL FIX FOR WIPING ENTRIES AND REPORT TO THE GITHUB REPO. {e}"))
 
 
@@ -271,4 +272,12 @@ if __name__ == "__main__":
 
 if not checkForAdmin():
     sys.exit(0)
-uvicorn.run(api, host="127.0.0.1", port=8000)
+initLog()
+
+config = uvicorn.Config(api, host="127.0.0.1", port=8000)
+server = uvicorn.Server(config=config)
+
+serverThread = threading.Thread(target=server.run)
+serverThread.start()
+
+#uvicorn.run(api, host="127.0.0.1", port=8000)

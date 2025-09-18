@@ -77,7 +77,6 @@ void checkForExistingFiles(String path, Shell shell) {
     funcs.updateErrorLog(logType: "NOTICE", log:"File $fileName not found, creating instance at $path\\$fileName");
     try{
       File("$path\\$fileName").createSync();
-      print("File $fileName created");
       if(fileName.substring(fileName.length-5, fileName.length) == ".json" && fileName=="settings.json"){
         File("$path\\$fileName").writeAsStringSync(jsonEncode({
           "detectedApps": {},
@@ -90,8 +89,8 @@ void checkForExistingFiles(String path, Shell shell) {
         File("$path\\$fileName").writeAsStringSync(jsonEncode({}));
       }
       if(fileName == "ErrorLog.txt") {
-        funcs.ableToWriteErrors = true;
         funcs.initDebugFile(path: path);
+        funcs.ableToWriteErrors = true;
       }
     } catch(e) {
       funcs.updateErrorLog(logType: "ERROR", log:"File $fileName failed to create due to error: $e");

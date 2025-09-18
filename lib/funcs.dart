@@ -49,9 +49,7 @@ TextStyle errorTitle = TextStyle(
 );
 
 void initDebugFile({required String path}) {
-  //debugFilePath = (await getApplicationDocumentsDirectory()).path;
-  debugFile = File("$path\\DesktopOpal\\ErrorLog.txt");
-  print("a");
+  debugFile = File("$path\\ErrorLog.txt");
 }
 
 Future<Map<String, type>> loadJsonFromFile<type>(String fileName) async{

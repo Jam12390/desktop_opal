@@ -15,9 +15,9 @@ import 'constants/helpText.dart' as helpStrings;
 
 Map<String, bool> shownErrors = {
   "notices": true,
-  "warnings": false,
-  "errors": false,
-  "criticalErrors": false};
+  "warnings": true,
+  "errors": true,
+  "criticalErrors": true};
 
 List<String> allErrors = [];
 
@@ -123,8 +123,12 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                                     title: Text("The Uh Oh Button"),
                                     subtitle: Text("For when the windows registry decides you no longer have access to any apps"),
                                     trailing: IconButton(
-                                      onPressed: () {
-                                        http.post(Uri.parse("http://127.0.0.1:8000/wipeEntries"));
+                                      onPressed: () async{
+                                        List<dynamic> wipeResponse = jsonDecode((await http.get(Uri.parse("http://127.0.0.1:8000/wipeEntries"))).body);
+                                        if (wipeResponse.isNotEmpty){
+                                          funcs.updateErrorLog(logType: wipeResponse[0], log: wipeResponse[1]);
+                                          http.post(Uri.parse("http://127.0.0.1:8000/kill"));
+                                        }
                                         dashboard.blockTim.endTimer();
                                         dashboard.breakTim.endTimer();
                                       },
@@ -385,9 +389,11 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                             appEntries = [];
                             appValues = [];
                           });
-                          await http.post(
-                            Uri.parse("http://127.0.0.1:8000/wipeEntries")
-                          );
+                          List<String> wipeResponse = jsonDecode((await http.get(Uri.parse("http://127.0.0.1:8000/wipeEntries"))).body);
+                          if(wipeResponse.isNotEmpty){
+                            funcs.updateErrorLog(logType: wipeResponse[0], log: wipeResponse[1]);
+                            http.post(Uri.parse("http://127.0.0.1:8000/kill"));
+                          }
                         },
                         child: Text("Yes")
                       )
@@ -707,20 +713,6 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
       });
     }
 
-    void wipeLog(){
-      externalSetState!(() {
-        errors = {
-          "notices": [],
-          "warnings": [],
-          "errors": [],
-          "criticalErrors": []
-        };
-        allErrors = [];
-        listChildren = [];
-        File(logPath).writeAsStringSync("");
-      });
-    }
-
     for(String error in allErrors){
       String errorType = error.split("]")[0].substring(1); //Splits the error into [0] - [$error and [1] - $log, taking [$error after the first character as the error type
       switch(errorType){
@@ -755,10 +747,10 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
             List<FilterButton> buttons = List.generate(errorTypes.length, (index) {
               return FilterButton(
                 title: filterButtonTitles[index],
-                enabled: errorTypes[index] == "notices" ? true : false,
+                enabled: true, //errorTypes[index] == "notices" ? true : false,
                 toggleFunction: () => listChildren = generateErrorList(),
                 externalSetState: externalSetState,
-                width: dialogWidth * 0.02 * filterButtonTitles[index].length, //TODO: idea - multiply a percentage by the length of the title for varying width
+                width: dialogWidth * 0.02 * filterButtonTitles[index].length,
                 overrideWidth: errorTypes[index] == "criticalErrors" ? 125 : null,
               );
             });
@@ -860,7 +852,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [//TODO: here
+                children: [
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text("Are you sure you want to wipe the error log?")
@@ -1010,8 +1002,8 @@ class ErrorTile extends StatelessWidget{
   @override
   Widget build(BuildContext context){
     final List<String> errorComponents = [ //in order: errortype, datetime, error
-      error.split(" ")[0],
-      "${error.split(": ")[0].split(" ")[1]} ${error.split(": ")[0].split(" ")[2].split(".")[0]}",
+      "${error.split("]")[0]}]",
+      "${error.split(": ")[0].split("] ")[1].substring(0,10)} ${error.split(": ")[0].split("] ")[1].split(".")[0].split(" ")[1]}", //[OH NO] 2025-09-18 19:17:15.592169: 
       error.split(": ")[1]
     ];
     return SizedBox(
@@ -1024,7 +1016,7 @@ class ErrorTile extends StatelessWidget{
             children: [
               Text("${errorComponents[1]} - ${errorComponents[0]}:", style: funcs.errorTitle,),
               IconButton(
-                onPressed: deleteFunction, //TODO: implement deletion of specific errors
+                onPressed: deleteFunction,
                 icon: Icon(Icons.delete)
               )
             ],
@@ -1046,6 +1038,7 @@ class ExpandableText extends StatefulWidget{
   final Color backgroundColour;
   final BorderRadius? borderOverride;
 
+  @override
   State<ExpandableText> createState() => ExpandableTextState();
 }
 
@@ -1053,6 +1046,7 @@ class ExpandableTextState extends State<ExpandableText>{
   ValueNotifier<bool> expanded = ValueNotifier(false);
   double rotation = 0;
 
+  @override
   Widget build(BuildContext context){
     return ValueListenableBuilder(
       valueListenable: expanded,
