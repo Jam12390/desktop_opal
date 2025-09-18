@@ -179,9 +179,9 @@ void main() async{
 
   File("$saveDir\\DesktopOpal\\barchartdata.json").writeAsStringSync(jsonEncode(history));
 
-  //shell.run(r'start winregBackend.exe');
   try{
-    shell.runSync(r"start $pwd/../winregBackend.py");
+    //shell.runSync(r"start $pwd/../winregBackend.py");
+    shell.run(r'start winregBackend.exe');
   } catch (e) {
     funcs.updateErrorLog(logType: "ERROR", log: "Backend failed to start with exception $e");
   }
