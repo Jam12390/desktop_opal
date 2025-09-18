@@ -79,7 +79,8 @@ def initialPolicyCheck():
             winreg.CloseKey(soft)
     except Exception as e:
         errorLog.write(formatErrorLog(logtype="CRITICAL ERROR", log=f"WINDOWS REGISTRY FAILED TO OPEN: {e}.")) #uh oh
-        os.system("Stop-Process -Name 'desktop_opal'") #yeah no the app can't run without that - TODO: maybe add an alert here for user?
+        killFixedProcess(toKill="desktop_opal.exe", restart=False) #yeah no the app can't run without that - TODO: maybe add an alert here for user?
+        os.system("tskill 'desktop_opal'")
         exit()
 
 @api.post("/terminateBlockedApps")
@@ -90,13 +91,21 @@ def terminateBlockedApps():
         blockedApps = []
         for key in range(1, winreg.QueryInfoKey(keyPath)[1]+1):
             blockedApps.append(winreg.QueryValueEx(keyPath, str(key))[0])
+        print(blockedApps)
         winreg.CloseKey(keyPath)
-        for app in blockedApps:
-            print(f"Killing {app} using 'Stop-Process -Name '{app[:-4]}''.")
-            os.system(f"Stop-Process -Name '{app[:-4]}'")
+        for process in psutil.process_iter(["name"]):
+            if process.info["name"] in blockedApps:
+                process.terminate()
+                #os.system(f"Stop-Process -Name '{app[:-4]}'")
     except Exception as e:
         errorLog.write(formatErrorLog(logtype="WARNING", log=f"Apps failed to terminate due to {e}."))
 
+def killFixedProcess(toKill : str, restart : bool):
+    for process in psutil.process_iter(["name"]):
+        if process.info["name"] == toKill:
+            process.terminate()
+            if restart:
+                os.system(toKill)
 
 @api.post("/toggleBreak")
 def toggleBreak(params: BreakRequest):
@@ -138,7 +147,11 @@ def createAppValues(params: RegRequest):
             except Exception as e:
                 print(f"Addition of {remainingApp} failed with exception {e}")
             valuesAdded += 1
-        os.system("gpupdate /target:user")
+        terminateBlockedApps()
+        #try:
+        #    killFixedProcess(toKill="explorer", restart=True)
+        #except:
+        #    os.system("Stop-Process -Name 'explorer'")
         winreg.CloseKey(keyPath)
         return 0
     except Exception as e:
@@ -155,7 +168,7 @@ def deleteKeys(params: RegRequest):
     except Exception as e:
         errorLog.write(formatErrorLog(logtype="CRITICAL ERROR", log=f"FAILED TO UNBLOCK APPS DUE TO {e}. CONSULT THE UH OH BUTTON."))
         wipeEntries()
-        os.system("Stop-Process -Name 'desktop_opal'")
+        killFixedProcess(toKill="desktop_opal.exe", restart=False)
         exit()
     numberOfValues = winreg.QueryInfoKey(keyPath)[1]
     preExistingValues = [
@@ -187,7 +200,7 @@ def wipeEntries():
             numberOfValues = winreg.QueryInfoKey(keyPath)[1]
             for key in range(1, numberOfValues):
                 winreg.DeleteKey(keyPath, str(key))
-            os.system("gpupdate /target:user")
+            #killFixedProcess(toKill="explorer.exe", restart=True)
             winreg.CloseKey(keyPath)
             return 0
         except:

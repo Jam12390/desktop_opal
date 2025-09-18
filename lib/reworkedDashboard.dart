@@ -213,7 +213,7 @@ class BlockTimer with ChangeNotifier{
   void updateBarChart() {
     String formattedDate = funcs.formatDateToJson(null);
     if(mainScript.history[formattedDate] != null){
-      mainScript.history[formattedDate] = mainScript.history[formattedDate]! + double.parse((mainScript.history[formattedDate]! + timeToAdd/3600).toStringAsFixed(2));
+      mainScript.history[formattedDate] = double.parse((mainScript.history[formattedDate]! + timeToAdd/3600).toStringAsFixed(2));
       int index = barDataKeys.indexOf(formattedDate);
       barDataValues[index] = mainScript.history[formattedDate]!;
       barDataValuesBuffer[index] = mainScript.history[formattedDate]!;
@@ -274,7 +274,7 @@ class BreakTimer with ChangeNotifier{
         "keys": funcs.validateBlockedApps()[0]
       })
     );
-    http.post(Uri.parse("http://127.0.0.1:8000/terminateBlockedApps"));
+    //http.post(Uri.parse("http://127.0.0.1:8000/terminateBlockedApps"));
   }
 }
 
@@ -835,7 +835,7 @@ class DashboardState extends State<Dashboard> with SingleTickerProviderStateMixi
           "values": categorisedApps[0]
         })
       );
-      await http.post(Uri.parse("http://127.0.0.1:8000/terminateBlockedApps"));
+      //await http.post(Uri.parse("http://127.0.0.1:8000/terminateBlockedApps"));
       if(!isFixedDuration){
         DateTime now = DateTime.now();
         if(checkIfNextDay(endTime!)){
