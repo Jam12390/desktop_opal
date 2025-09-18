@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:desktop_opal/main.dart' as mainScript;
 import 'package:desktop_opal/reworkedDashboard.dart' as dashboard;
+import 'package:flutter_animate/flutter_animate.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -19,6 +20,8 @@ Map<String, bool> shownErrors = {
   "criticalErrors": false};
 
 List<String> allErrors = [];
+
+bool firstLoadAnimPlayed = false;
 
 class BlockSettingsPage extends StatefulWidget{
   const BlockSettingsPage({super.key});
@@ -44,6 +47,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
     super.initState();
     controller = TabController(length: 2, vsync: this);
     textController = TextEditingController();
+    firstLoadAnimPlayed = true;
   }
 
   @override
@@ -57,196 +61,209 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
   List<String> appEntries = List.from(mainScript.settings["detectedApps"].keys);
   List<bool> appValues = List.from(mainScript.settings["detectedApps"].values);
 
+  final int delayIncrement = firstLoadAnimPlayed ? 0 : 175;
+  final int animDuration = firstLoadAnimPlayed ? 0 : 750;
+
   @override
   Widget build(BuildContext context){
     return Scaffold(
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text("Settings:", style: funcs.titleText,)
+      body: Animate(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text("Settings:", style: funcs.titleText,)
+              ).animate()
+              .fadeIn(duration: Duration(milliseconds: animDuration), curve: Curves.easeOut)
+              .moveY(begin: -25, end: 0, duration: Duration(milliseconds: animDuration), curve: Curves.easeOut),
             ),
-          ),
-          Divider(height: 50,),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16, left: 16, bottom: 16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
-                    color: Colors.grey[900],
-                  ),
-                  width: MediaQuery.of(context).size.width * (2/5),
-                  height: MediaQuery.of(context).size.height - 146,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height - 396,
-                          child: ListView(
-                            shrinkWrap: true,
-                              children: [
-                                ListTile(
-                                  leading: Icon(Icons.dark_mode),
-                                  title: Text("Dark Mode"),
-                                  subtitle: Text("(Coming... at one point)"),
-                                  trailing: Switch(
-                                    value: mainScript.settings["darkMode"],
-                                    onChanged: (value) {
-                                      mainScript.settings["darkMode"] = value;
-                                      setState(() {});
-                                    }
-                                  )
-                                ),
-                                ListTile(
-                                  leading: Icon(Icons.warning),
-                                  title: Text("The Uh Oh Button"),
-                                  subtitle: Text("For when the windows registry decides you no longer have access to any apps"),
-                                  trailing: IconButton(
-                                    onPressed: () {
-                                      http.post(Uri.parse("http://127.0.0.1:8000/wipeEntries"));
-                                      dashboard.blockTim.endTimer();
-                                      dashboard.breakTim.endTimer();
-                                    },
-                                    icon: Icon(Icons.restore),
-                                    tooltip: "Uh Oh",
+            Divider(
+              height: 50,
+            ).animate(delay: Duration(milliseconds: delayIncrement))
+            .fadeIn(duration: Duration(milliseconds: animDuration), curve: Curves.easeOut)
+            .moveY(begin: -25, end: 0, duration: Duration(milliseconds: animDuration), curve: Curves.easeOut),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16, left: 16, bottom: 16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                      color: Colors.grey[900],
+                    ),
+                    width: MediaQuery.of(context).size.width * (2/5),
+                    height: MediaQuery.of(context).size.height - 146,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height - 396,
+                            child: ListView(
+                              shrinkWrap: true,
+                                children: [
+                                  ListTile(
+                                    leading: Icon(Icons.dark_mode),
+                                    title: Text("Dark Mode"),
+                                    subtitle: Text("(Coming... at one point)"),
+                                    trailing: Switch(
+                                      value: mainScript.settings["darkMode"],
+                                      onChanged: (value) {
+                                        mainScript.settings["darkMode"] = value;
+                                        setState(() {});
+                                      }
+                                    )
                                   ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        Wrap(
-                          children: [
-                            Divider(height: 20,),
-                            ListTile(
-                              leading: Icon(Icons.question_mark),
-                              title: Text("How To Use"),
-                              trailing: IconButton(
-                                onPressed: () async {await openHelpDialog(context);},
-                                icon: Icon(Icons.help),
-                                tooltip: "Open Help",
-                              ),
+                                  ListTile(
+                                    leading: Icon(Icons.warning),
+                                    title: Text("The Uh Oh Button"),
+                                    subtitle: Text("For when the windows registry decides you no longer have access to any apps"),
+                                    trailing: IconButton(
+                                      onPressed: () {
+                                        http.post(Uri.parse("http://127.0.0.1:8000/wipeEntries"));
+                                        dashboard.blockTim.endTimer();
+                                        dashboard.breakTim.endTimer();
+                                      },
+                                      icon: Icon(Icons.restore),
+                                      tooltip: "Uh Oh",
+                                    ),
+                                  ),
+                              ],
                             ),
-                            ListTile(
-                              leading: Icon(Icons.bug_report),
-                              title: Text("Error Logs"),
-                              trailing: IconButton(
-                                onPressed: () async {await openErrorLogDialog(context);},
-                                icon: Icon(Icons.developer_mode),
-                                tooltip: "Open Error Log",
+                          ),
+                          Wrap(
+                            children: [
+                              Divider(height: 20,),
+                              ListTile(
+                                leading: Icon(Icons.question_mark),
+                                title: Text("How To Use"),
+                                trailing: IconButton(
+                                  onPressed: () async {await openHelpDialog(context);},
+                                  icon: Icon(Icons.help),
+                                  tooltip: "Open Help",
+                                ),
                               ),
-                            )
-                          ]
-                        )
-                      ],
+                              ListTile(
+                                leading: Icon(Icons.bug_report),
+                                title: Text("Error Logs"),
+                                trailing: IconButton(
+                                  onPressed: () async {await openErrorLogDialog(context);},
+                                  icon: Icon(Icons.developer_mode),
+                                  tooltip: "Open Error Log",
+                                ),
+                              )
+                            ]
+                          )
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(left: 16, right: 16, bottom: 16),
-                  child: Container(
-                    width: MediaQuery.of(context).size.width/2,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.all(Radius.circular(16)),
-                      color: Colors.grey[900]
-                    ),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text("Blocked Apps:", style: TextStyle(color: Colors.grey[400], fontSize: 35)),
-                              ),
-                              IconButton(
-                                onPressed: () async{
-                                  await openEditDialog(context);
-                                },
-                                tooltip: "Edit Apps",
-                                icon: Icon(Icons.edit, color: Colors.white,)
-                              )
-                            ],
-                          ),
-                        ),
-                        Divider(height: 10,),
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height - 288,
-                          child: ListView(
-                            children: [
-                              for(int i=0; i < appEntries.length; i++)
-                                mainScript.settings["excludedApps"].contains(appEntries[i]) ?
-                                Container() :
-                                CheckboxListTile(
-                                  value: appValues[i], onChanged: (value) {
-                                    appValues[i] = value!;
-                                    mainScript.settings["detectedApps"][appEntries[i]] = appValues[i];
-                                    setState(() {}); //update view
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                    child: Container(
+                      width: MediaQuery.of(context).size.width/2,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.all(Radius.circular(16)),
+                        color: Colors.grey[900]
+                      ),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text("Blocked Apps:", style: TextStyle(color: Colors.grey[400], fontSize: 35)),
+                                ),
+                                IconButton(
+                                  onPressed: () async{
+                                    await openEditDialog(context);
                                   },
-                                  title: Padding(
-                                    padding: const EdgeInsets.only(top: 8, left: 16),
-                                    child: Text(appEntries[i], style: funcs.defaultText,)
-                                    ),
-                                  )
+                                  tooltip: "Edit Apps",
+                                  icon: Icon(Icons.edit, color: Colors.white,)
+                                )
                               ],
+                            ),
                           ),
-                        ),
-                        Divider(height: 10,),
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Wrap(
-                                children: [
-                                  IconButton(
-                                    onPressed: () async {
-                                      final response = await http.get(Uri.parse("http://127.0.0.1:8000/checkForDesktopExecutables?"));
-                                      List<String> executables = jsonDecode(response.body).cast<String>();
-                                      setState(() {
-                                        for(String executable in executables){
-                                          if(!appEntries.contains(executable)){
-                                            mainScript.settings["detectedApps"][executable] = true;
-                                            mainScript.settings["enabledApps"].add(executable);
-                                            appEntries.add(executable);
-                                            appValues.add(true);
+                          Divider(height: 10,),
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height - 288,
+                            child: ListView(
+                              children: [
+                                for(int i=0; i < appEntries.length; i++)
+                                  mainScript.settings["excludedApps"].contains(appEntries[i]) ?
+                                  Container() :
+                                  CheckboxListTile(
+                                    value: appValues[i], onChanged: (value) {
+                                      appValues[i] = value!;
+                                      mainScript.settings["detectedApps"][appEntries[i]] = appValues[i];
+                                      setState(() {}); //update view
+                                    },
+                                    title: Padding(
+                                      padding: const EdgeInsets.only(top: 8, left: 16),
+                                      child: Text(appEntries[i], style: funcs.defaultText,)
+                                      ),
+                                    )
+                                ],
+                            ),
+                          ),
+                          Divider(height: 10,),
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Wrap(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () async {
+                                        final response = await http.get(Uri.parse("http://127.0.0.1:8000/checkForDesktopExecutables?"));
+                                        List<String> executables = jsonDecode(response.body).cast<String>();
+                                        setState(() {
+                                          for(String executable in executables){
+                                            if(!appEntries.contains(executable)){
+                                              mainScript.settings["detectedApps"][executable] = true;
+                                              mainScript.settings["enabledApps"].add(executable);
+                                              appEntries.add(executable);
+                                              appValues.add(true);
+                                            }
                                           }
-                                        }
-                                      });
-                                    },
-                                    tooltip: "Auto-detect Executables",
-                                    icon: Icon(Icons.restart_alt, color: Colors.white,)
-                                  ),
-                                  IconButton(
-                                    onPressed: () async {
-                                      await openConfirmDialog(context);
-                                    },
-                                    tooltip: "Delete ALL App Entries",
-                                    icon: Icon(Icons.delete_forever, color: Colors.white,)
-                                  )
-                                ]
-                              ),
-                            ],
-                          ),
-                        )
-                      ],
+                                        });
+                                      },
+                                      tooltip: "Auto-detect Executables",
+                                      icon: Icon(Icons.restart_alt, color: Colors.white,)
+                                    ),
+                                    IconButton(
+                                      onPressed: () async {
+                                        await openConfirmDialog(context);
+                                      },
+                                      tooltip: "Delete ALL App Entries",
+                                      icon: Icon(Icons.delete_forever, color: Colors.white,)
+                                    )
+                                  ]
+                                ),
+                              ],
+                            ),
+                          )
+                        ],
+                      ),
                     ),
-                  ),
+                  )
                 )
-              )
-            ],
-          ),
-        ],
+              ],
+            ).animate(delay: Duration(milliseconds: delayIncrement*3))
+            .fadeIn(duration: Duration(milliseconds: animDuration), curve: Curves.easeOut)
+            .moveY(begin: -25, end: 0, duration: Duration(milliseconds: animDuration), curve: Curves.easeOut),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: "Apply Settings",
@@ -663,7 +680,6 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
     List<String> errorTypes = List.from(errors.keys);
 
     List<Widget> generateErrorList(){
-      print("e");
       List<Widget> errorList = [];
       for(String key in errorTypes){
         if(shownErrors[key]!) errorList.addAll(errors[key]!);
@@ -824,7 +840,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
     }
   }
 
-  Future<void> openWipeConfirmDialog(BuildContext context) async {
+  Future<bool> openWipeConfirmDialog(BuildContext context) async {
     final double dialogWidth = 350;
     final double dialogHeight = 100;
 
@@ -855,13 +871,21 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                       TextButton(
                         onPressed: () async {
                           Navigator.pop(context);
-                          String logPath = "${(await getApplicationDocumentsDirectory()).path}\\DesktopOpal\\ErrorLog.txt";
-                          File(logPath).writeAsStringSync("");
+                          Navigator.pop(context);
+                          try{
+                            String logPath = "${(await getApplicationDocumentsDirectory()).path}\\DesktopOpal\\ErrorLog.txt";
+                            File(logPath).writeAsStringSync("");
+                          } catch(e) {
+                            funcs.updateErrorLog(logType: "ERROR", log: "Error log failed to update due to $e");
+                          }
                         },
                         child: Text("Yes")
                       ),
                       TextButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.pop(context);
+                        },
                         child: Text("No")
                       )
                     ],

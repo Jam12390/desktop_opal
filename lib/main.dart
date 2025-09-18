@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:desktop_opal/blocksettings.dart' as blockSettings;
 import 'package:desktop_opal/reworkedDashboard.dart' as dashboard;
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:process_run/shell.dart';
@@ -58,12 +57,11 @@ String verifyFormat(String toCheck){
   return toCheck;
 }
 
-void checkForExistingFiles(String path, Shell shell) async{
+void checkForExistingFiles(String path, Shell shell) {
   List<String> missingFiles = [];
-  try{
-    await shell.run("cd $path\\DesktopOpal");
-  } catch (_){
-    await shell.run("mkdir $path\\DesktopOpal");
+  Directory saveFolder = Directory("$path\\DesktopOpal");
+  if(!saveFolder.existsSync()){
+    shell.runSync("mkdir $path\\DesktopOpal");
   }
   path = "$path\\DesktopOpal";
   if(!File("$path\\settings.json").existsSync()){
@@ -73,14 +71,27 @@ void checkForExistingFiles(String path, Shell shell) async{
     missingFiles.add("barchartdata.json");
   }
   if(!File("$path\\ErrorLog.txt").existsSync()){
-    missingFiles.add("ErrorLog.txt");
+    missingFiles.insert(0, "ErrorLog.txt"); //ensure that the error log is created first
   }
   for(String fileName in missingFiles){
     funcs.updateErrorLog(logType: "NOTICE", log:"File $fileName not found, creating instance at $path\\$fileName");
     try{
-      await File("$path\\$fileName").create();
-      if(fileName.substring(fileName.length-5, fileName.length) == ".json"){
+      File("$path\\$fileName").createSync();
+      print("File $fileName created");
+      if(fileName.substring(fileName.length-5, fileName.length) == ".json" && fileName=="settings.json"){
+        File("$path\\$fileName").writeAsStringSync(jsonEncode({
+          "detectedApps": {},
+          "enabledApps": [],
+          "excludedApps": [],
+          "blacklistedApps": ["explorer.exe", "regedit.exe"],
+          "darkMode": true
+        }));
+      } else if(fileName.substring(fileName.length-5, fileName.length) == ".json"){
         File("$path\\$fileName").writeAsStringSync(jsonEncode({}));
+      }
+      if(fileName == "ErrorLog.txt") {
+        funcs.ableToWriteErrors = true;
+        funcs.initDebugFile(path: path);
       }
     } catch(e) {
       funcs.updateErrorLog(logType: "ERROR", log:"File $fileName failed to create due to error: $e");
@@ -143,7 +154,6 @@ void main() async{
   String saveDir = (await getApplicationDocumentsDirectory()).path;
   
   checkForExistingFiles(saveDir, shell);
-  funcs.initDebugFile();
 
   try{
     settings = await funcs.loadJsonFromFile<dynamic>("settings.json");
@@ -172,8 +182,7 @@ void main() async{
 
   //shell.run(r'start winregBackend.exe');
   try{
-    print("die");
-    //shell.run(r"start $pwd/../winregBackend.py");
+    shell.runSync(r"start $pwd/../winregBackend.py");
   } catch (e) {
     funcs.updateErrorLog(logType: "ERROR", log: "Backend failed to start with exception $e");
   }

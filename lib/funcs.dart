@@ -6,8 +6,10 @@ import 'main.dart' as mainScript;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
-late String debugFilePath;
+//late String debugFilePath;
 late File debugFile;
+
+bool ableToWriteErrors = false;
 
 TextStyle defaultText = TextStyle(
   color: Colors.white, 
@@ -46,9 +48,10 @@ TextStyle errorTitle = TextStyle(
   decoration: TextDecoration.underline
 );
 
-void initDebugFile() async{
-  debugFilePath = (await getApplicationDocumentsDirectory()).path;
-  debugFile = File("$debugFilePath\\DesktopOpal\\ErrorLog.txt");
+void initDebugFile({required String path}) {
+  //debugFilePath = (await getApplicationDocumentsDirectory()).path;
+  debugFile = File("$path\\DesktopOpal\\ErrorLog.txt");
+  print("a");
 }
 
 Future<Map<String, type>> loadJsonFromFile<type>(String fileName) async{
@@ -87,5 +90,5 @@ String formatDateToJson(DateTime? toEncode){
 }
 
 void updateErrorLog({required String logType, required String log}){
-  debugFile.writeAsStringSync("\n[$logType] ${DateTime.now()}: $log", mode: FileMode.append);
+  if(ableToWriteErrors) debugFile.writeAsStringSync("\n[$logType] ${DateTime.now()}: $log", mode: FileMode.append);
 }

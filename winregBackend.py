@@ -227,10 +227,13 @@ def getExecutables(files: list, path: str):
     return executables
 
 def createList(path: str):
-    result = []
-    for file in os.listdir(os.fsencode(path)):
-        result.append(file)
-    return result
+    try:
+        result = []
+        for file in os.listdir(os.fsencode(path)):
+            result.append(file)
+        return result
+    except:
+        return []
 
 #potentially use in future
 @api.get("/isInstalled")

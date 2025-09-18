@@ -69,9 +69,13 @@ int breakDuration = 0;
 int initBreakDuration = 0;
 
 List<String> barDataKeys = List.from(mainScript.history.keys);
-List<double> barDataValues = List.from(mainScript.history.values);
+List<double> barDataValuesBuffer = List.from(mainScript.history.values);
+List<double> barDataValues = List.filled(barDataKeys.length, 0);
+Function(void Function())? barState;
 int isTouchedIndex = -1;
 double timeToAdd = 0;
+
+bool introAnimPlayed = false;
 
 class HistoryBarChart extends StatefulWidget{
   const HistoryBarChart({super.key});
@@ -85,7 +89,10 @@ class HistoryState extends State<HistoryBarChart>{
 
   @override
   Widget build(BuildContext context){
+    barState = setState;
     return BarChart(
+      duration: Duration(milliseconds: 750),
+      curve: Curves.easeOut,
       BarChartData(
         barGroups: List.generate(mainScript.history.length, (index) => createBar(x: index, toY: barDataValues[index], width: 22)),
         alignment: BarChartAlignment.spaceEvenly,
@@ -206,13 +213,15 @@ class BlockTimer with ChangeNotifier{
   void updateBarChart() {
     String formattedDate = funcs.formatDateToJson(null);
     if(mainScript.history[formattedDate] != null){
-      mainScript.history[formattedDate] = double.parse((mainScript.history[formattedDate]! + timeToAdd/3600).toStringAsFixed(2));
+      mainScript.history[formattedDate] = mainScript.history[formattedDate]! + double.parse((mainScript.history[formattedDate]! + timeToAdd/3600).toStringAsFixed(2));
       int index = barDataKeys.indexOf(formattedDate);
       barDataValues[index] = mainScript.history[formattedDate]!;
+      barDataValuesBuffer[index] = mainScript.history[formattedDate]!;
     } else{
       mainScript.history[formattedDate] = double.parse((timeToAdd/3600).toStringAsFixed(2));
       barDataKeys.add(formattedDate);
       barDataValues.add(mainScript.history[formattedDate]!);
+      barDataValuesBuffer.add(mainScript.history[formattedDate]!);
     }
   }
 
@@ -306,12 +315,25 @@ class DashboardState extends State<Dashboard> with SingleTickerProviderStateMixi
   @override
   void initState(){
     super.initState();
+    duration = introAnimPlayed ? 0 : 1.25;
+    barChartInitTimer = Timer.periodic(Duration(milliseconds: 250), (timeRemaining) {
+      duration -= 0.25;
+      if(duration <= 0 && barState != null){
+        barState!(() => barDataValues = barDataValuesBuffer);
+      } else if(duration <= 0){
+        barChartInitTimer!.cancel();
+      }
+    });
+    introAnimPlayed = true;
   }
 
   @override
   void dispose(){
     super.dispose();
     mainSetState = null;
+    barState = null;
+    barDataValuesBuffer = barDataValues;
+    barDataValues = List.filled(barDataValuesBuffer.length, 0);
   }
 
   bool checkForBlockEntries(){
@@ -324,6 +346,12 @@ class DashboardState extends State<Dashboard> with SingleTickerProviderStateMixi
     }
     return false;
   }
+
+  final int delayIncrement = introAnimPlayed ? 0 : 175;
+  final int animDuration = introAnimPlayed ? 0 : 750;
+
+  late Timer? barChartInitTimer;
+  double duration = 1;
 
   @override
   Widget build(BuildContext context){
@@ -372,12 +400,16 @@ class DashboardState extends State<Dashboard> with SingleTickerProviderStateMixi
                       ),
                     )
                   ],
-                ),
+                ).animate()
+                .fadeIn(duration: Duration(milliseconds: animDuration), curve: Curves.easeOut)
+                .moveY(begin: -25, end: 0, duration: Duration(milliseconds: animDuration), curve: Curves.easeOut)
               ),
             ),
             Divider(
               height: 50,
-            ),
+            ).animate(delay: Duration(milliseconds: delayIncrement))
+                .fadeIn(duration: Duration(milliseconds: animDuration), curve: Curves.easeOut)
+                .moveY(begin: -25, end: 0, duration: Duration(milliseconds: animDuration), curve: Curves.easeOut),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -432,7 +464,9 @@ class DashboardState extends State<Dashboard> with SingleTickerProviderStateMixi
                             ],
                           );
                         }
-                      ),
+                      ).animate(delay: Duration(milliseconds: delayIncrement*2))
+                      .fadeIn(duration: Duration(milliseconds: animDuration), curve: Curves.easeOut)
+                      .moveY(begin: -25, end: 0, duration: Duration(milliseconds: animDuration), curve: Curves.easeOut),
                     ),
                     Padding(
                       padding: const EdgeInsets.only(top: 8, bottom: 16, left: 16, right: 8),
@@ -447,7 +481,7 @@ class DashboardState extends State<Dashboard> with SingleTickerProviderStateMixi
                               alignment: Alignment.centerLeft,
                               child: Padding(
                                 padding: const EdgeInsets.only(left: 16, top: 8),
-                                child: Text("oooo Sliders (i forgot what i wanted to put here)", style: funcs.defaultText,),
+                                child: Text("Complementary Sliders For Your Fidget Enjoyment", style: funcs.defaultText,),
                               )
                             ),
                             for(int x=0; x<5; x++) Slider(value: sliderValues[x], onChanged: (value) {
@@ -456,7 +490,9 @@ class DashboardState extends State<Dashboard> with SingleTickerProviderStateMixi
                             })
                           ],
                         ),
-                      ),
+                      ).animate(delay: Duration(milliseconds: delayIncrement*3))
+                      .fadeIn(duration: Duration(milliseconds: animDuration), curve: Curves.easeOut)
+                      .moveY(begin: -25, end: 0, duration: Duration(milliseconds: animDuration), curve: Curves.easeOut),
                     ),
                   ],
                 ),
@@ -489,12 +525,14 @@ class DashboardState extends State<Dashboard> with SingleTickerProviderStateMixi
                         ],
                       ),
                     ),
-                    ),
+                  ).animate(delay: Duration(milliseconds: delayIncrement*2))
+                .fadeIn(duration: Duration(milliseconds: animDuration), curve: Curves.easeOut)
+                .moveY(begin: -25, end: 0, duration: Duration(milliseconds: animDuration), curve: Curves.easeOut),
                 )
               ],
             ),
           ],
-        ).animate().fadeIn(duration: Duration(seconds: 1)).moveY(begin: -30, end: 0, curve: Curves.easeOut), //TODO: make this separate for all widgets top to bottom
+        )
       ),
     );
   }
