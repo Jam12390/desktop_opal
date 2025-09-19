@@ -19,7 +19,7 @@ Desktop_Opal requires:
 - Admin permission on launch to access and edit winreg.
 
 ## 🔽Installation
-- Download and extract the ShipReleasev1.0 folder from releases.
+- Download and extract the latest folder from releases.
 - If you are running the app from a shortcut make sure you run it AS ADMIN, otherwise the API will not launch correctly. If the API doesn't launch for any other reason, either run the winregBackend.exe file before desktop_opal or run desktop_opal as an admin initially.
 
 ## ❓How To Use (if you haven't looked at settings yet)
@@ -52,6 +52,12 @@ In this dialog you can:
 
 **NOTE: Almost all of this is covered in the how to use section of settings. This is here in case of future updates.**
 
+**I found an error, what should I do?**
+
+First, check ErrorLog.txt in C:\Users\[Your Username]\Documents\DesktopOpal. If the error is shown there, copy paste it into a new issue on the repo and I'll get to it ASAP.
+
+Otherwise, just describe what you were doing in a new issue and I'll do my best to fix it!
+
 **Help! All of my apps are still blocked even after my session has ended!**
 
 This is fine and probably happened because the app or API closed during a block session. The uhoh button in settings *should* fix this however if it doesn't:
@@ -65,10 +71,11 @@ This is fine and probably happened because the app or API closed during a block 
 
 Thats the API window, do not close it until you leave the app. Closing the python window will terminate the API and prevent any further interaction from the app with the windows registry.
 
-**Why did this take you 53 hours?**
+**Why did this take you 78 HOURS???**
 
 I don't know. It shouldn't have taken me this long, however I can think of a few reasons as to why:
 - This is my first time using flutter for a full project.
 - I hadn't used 75% of the packages I used prior to this project.
 - This was my first time trying hybrid programming.
 - I'm generally a slow worker (and went into this blind leading to me wasting like 10 hours on a weird layout).
+- I almost never used AI, AI was very rarely used while debugging and makes up <2% of the code, not enough to warrant an AI declaration as stated on SOM.
