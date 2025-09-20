@@ -179,6 +179,17 @@ class BlockTimer with ChangeNotifier{
         endTimer();
         notifyListeners();
       } else if(!onBreak){
+        if(duration == initDuration ~/ 2 && initDuration >= 600){
+          http.post(
+            Uri.parse("http://127.0.0.1:8000/notify"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "notifTitle": "Halfway there!",
+              "notifSubtitle": "yay",
+              "audio": "ms-winsoundevent:Notification.Reminder"
+            })
+          );
+        }
         updateValues(initDuration);
         notifyListeners();
       }
@@ -206,6 +217,15 @@ class BlockTimer with ChangeNotifier{
       body: jsonEncode({
         "goingOnBreak": true,
         "keys": funcs.validateBlockedApps()[0]
+      })
+    );
+    http.post(
+      Uri.parse("http://127.0.0.1:8000/notify"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "notifTitle": "Session Over!",
+        "notifSubtitle": "Have fun with your unblocked apps!",
+        "audio": "ms-winsoundevent:Notification.Reminder"
       })
     );
   }
@@ -246,7 +266,19 @@ class BreakTimer with ChangeNotifier{
       if(duration! <= 0){
         endTimer();
         notifyListeners();
-      } else{
+      } 
+      else{
+        if(duration == 60 && currentlyBlocking){
+          http.post(
+            Uri.parse("http://127.0.0.1:8000/notify"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "notfTitle": "Break Ending Soon!",
+              "notifSubtitle": "Warning: Apps will force close when break ends!",
+              "audio": "ms-winsoundevent:Notification.Reminder"
+            })
+          );
+        }
         updateValues(initDuration);
         notifyListeners();
       }
@@ -274,6 +306,17 @@ class BreakTimer with ChangeNotifier{
         "keys": funcs.validateBlockedApps()[0]
       })
     );
+    if(currentlyBlocking) {
+      http.post(
+        Uri.parse("http://127.0.0.1:8000/notify"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "notifTitle": "Break's Up!",
+          "notifSubtitle": "Time to get back to work!",
+          "audio": "ms-winsoundevent:Notification.Reminder"
+        })
+      );
+    }
     //http.post(Uri.parse("http://127.0.0.1:8000/terminateBlockedApps"));
   }
 }
@@ -573,7 +616,6 @@ class DashboardState extends State<Dashboard> with SingleTickerProviderStateMixi
     );
 
     return await showDialog(
-      barrierDismissible: false,
       context: context,
       builder: (context) {
         return StatefulBuilder(
@@ -815,7 +857,7 @@ class DashboardState extends State<Dashboard> with SingleTickerProviderStateMixi
     int duration = 0;
     if(mounted) Navigator.pop(context);
     if(blocked){
-      await http.post(Uri.parse("http://127.0.0.1:8000/initRegCheck"));
+      //await http.post(Uri.parse("http://127.0.0.1:8000/initRegCheck"));
       setState(() {
         currentlyBlocking = true;
       });

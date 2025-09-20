@@ -8,6 +8,7 @@ import 'package:desktop_opal/funcs.dart' as funcs;
 import 'package:process_run/shell.dart';
 import 'dart:async';
 import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 
 Map<String, dynamic> settings = {};
 Map<String, dynamic> initialSettings = {};
@@ -83,7 +84,7 @@ void checkForExistingFiles(String path, Shell shell) {
           "enabledApps": [],
           "excludedApps": [],
           "blacklistedApps": ["explorer.exe", "regedit.exe"],
-          "darkMode": true
+          "darkMode": true,
         }));
       } else if(fileName.substring(fileName.length-5, fileName.length) == ".json"){
         File("$path\\$fileName").writeAsStringSync(jsonEncode({}));
@@ -163,7 +164,7 @@ void main() async{
       "enabledApps": [],
       "excludedApps": [],
       "blacklistedApps": [],
-      "darkMode": false
+      "darkMode": false,
     };
   }
   try{
@@ -179,12 +180,35 @@ void main() async{
 
   File("$saveDir\\DesktopOpal\\barchartdata.json").writeAsStringSync(jsonEncode(history));
 
-  try{
-    //shell.runSync(r"start $pwd/../winregBackend.py");
-    shell.run(r'start winregBackend.exe');
-  } catch (e) {
-    funcs.updateErrorLog(logType: "ERROR", log: "Backend failed to start with exception $e");
-  }
+  //try{
+  //  bool apiInitialised = false;
+  //  shell.runSync(r"start $pwd/../winregBackend.py");
+  //  //shell.runSync(r'start winregBackend.exe');
+  //  while(!apiInitialised){
+  //    try{
+  //      await http.post(Uri.parse("http://127.0.0.1:8000/apiTest"));
+  //      apiInitialised = true;
+  //    } catch(_){
+  //      apiInitialised = false;
+  //    }
+  //  }
+  //  Future.delayed(Duration(seconds: 2));
+  //  await http.post(
+  //    Uri.parse("http://127.0.0.1:8000/initLog"),
+  //    headers: {
+  //      "Content-Type": "application/json"
+  //    },
+  //    body: jsonEncode({
+  //      "firstOpen": settings["firstOpen"]
+  //    })
+  //  );
+  //  settings["firstOpen"] = false;
+  //  File("$saveDir\\DesktopOpal\\settings.json").writeAsStringSync(jsonEncode(settings));
+  //} catch (e) {
+  //  funcs.updateErrorLog(logType: "ERROR", log: "Backend failed to start with exception $e");
+  //}
+
+  //shell.runSync(r"start $pwd/../desktop_opal.py"); //TODO: in build versions, make sure this ISNT ran
 
   runApp(
     const MyApp()
@@ -217,6 +241,12 @@ class MainPage extends StatefulWidget {
 class ReworkedMPState extends State<MainPage> {
   //Widget page = dashboard.Dashboard();
   Widget page = dashboard.Dashboard();
+
+  void initState(){
+    super.initState();
+
+    http.post(Uri.parse("http://127.0.0.1:8000/initLog")); //TODO: run this in build versions
+  }
 
   @override
   Widget build(BuildContext context){

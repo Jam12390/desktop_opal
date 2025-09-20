@@ -23,6 +23,8 @@ List<String> allErrors = [];
 
 bool firstLoadAnimPlayed = false;
 
+bool allChecked = false;
+
 class BlockSettingsPage extends StatefulWidget{
   const BlockSettingsPage({super.key});
 
@@ -127,7 +129,11 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                                         List<dynamic> wipeResponse = jsonDecode((await http.get(Uri.parse("http://127.0.0.1:8000/wipeEntries"))).body);
                                         if (wipeResponse.isNotEmpty){
                                           funcs.updateErrorLog(logType: wipeResponse[0], log: wipeResponse[1]);
-                                          http.post(Uri.parse("http://127.0.0.1:8000/kill"));
+                                          http.post(
+                                            Uri.parse("http://127.0.0.1:8000/kill"),
+                                            headers: {"Content-Type": "application/json"},
+                                            body: {"exception": wipeResponse[2]}
+                                          );
                                         }
                                         dashboard.blockTim.endTimer();
                                         dashboard.breakTim.endTimer();
@@ -187,12 +193,29 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                                   alignment: Alignment.centerLeft,
                                   child: Text("Blocked Apps:", style: TextStyle(color: Colors.grey[400], fontSize: 35)),
                                 ),
-                                IconButton(
-                                  onPressed: () async{
-                                    await openEditDialog(context);
-                                  },
-                                  tooltip: "Edit Apps",
-                                  icon: Icon(Icons.edit, color: Colors.white,)
+                                Wrap(
+                                  children: [
+                                    Checkbox(
+                                      value: allChecked,
+                                      onChanged: (value) {
+                                        allChecked = value!;
+                                        setState(() {
+                                          for(int i=0; i<appValues.length; i++){
+                                            appValues[i] = allChecked;
+                                            mainScript.settings["detectedApps"][appEntries[i]] = allChecked;
+                                          }
+                                          print("a");
+                                        });
+                                      }
+                                    ),
+                                    IconButton(
+                                    onPressed: () async{
+                                      await openEditDialog(context);
+                                    },
+                                    tooltip: "Edit Apps",
+                                    icon: Icon(Icons.edit, color: Colors.white,)
+                                    ),
+                                  ]
                                 )
                               ],
                             ),
@@ -234,10 +257,10 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                                         setState(() {
                                           for(String executable in executables){
                                             if(!appEntries.contains(executable)){
-                                              mainScript.settings["detectedApps"][executable] = true;
+                                              mainScript.settings["detectedApps"][executable] = allChecked;
                                               mainScript.settings["enabledApps"].add(executable);
                                               appEntries.add(executable);
-                                              appValues.add(true);
+                                              appValues.add(allChecked);
                                             }
                                           }
                                         });
@@ -389,7 +412,7 @@ class BlockSettingsPageState extends State<BlockSettingsPage> with WidgetsBindin
                             appEntries = [];
                             appValues = [];
                           });
-                          List<String> wipeResponse = jsonDecode((await http.get(Uri.parse("http://127.0.0.1:8000/wipeEntries"))).body);
+                          List<dynamic> wipeResponse = jsonDecode((await http.get(Uri.parse("http://127.0.0.1:8000/wipeEntries"))).body);
                           if(wipeResponse.isNotEmpty){
                             funcs.updateErrorLog(logType: wipeResponse[0], log: wipeResponse[1]);
                             http.post(Uri.parse("http://127.0.0.1:8000/kill"));
