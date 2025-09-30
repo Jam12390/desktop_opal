@@ -8,15 +8,22 @@ Desktop Opal (DO) is my personal version of the iOS app Opal which I made as I c
 
 ## 🚩 Regarding Windows Explorer Reload + Admin Perms
 
-This is an explanation as to why my app might show as a virus when downloading and why it needs admin permissions to work properly. It also covers why windows explorer reloads when opening the app for the first time and how to make your own build for the app if you don't trust me :'(
+This is an explanation as to why my app might show as a virus when downloading and why it needs admin permissions to work properly.
+It also covers why windows explorer reloads when opening the app for the first time and how to make your own build for the app if you don't trust me :'(
 
-This app uses windows policies to enforce block sessions, therefore interacting with and modifying the windows registry. This is likely why windows hates it with a vengeance and chrome sometimes doesn't let you download the release since its a "virus".
-The only workaround (to my knowledge) to chrome + other browsers denying install is to temporarily turn off windows defender (not suspicious at all lol). If you don't want to install my app after that, fair play I also wouldn't trust a random stranger on the internet with my windows registry.
+This app uses windows policies to enforce block sessions, therefore interacting with and modifying the windows registry.
+This is likely why windows hates it with a vengeance and chrome sometimes doesn't let you download the release since its a "virus".
+The only workaround (to my knowledge) to chrome + other browsers denying install is to temporarily turn off windows defender (not suspicious at all lol).
+If you don't want to install my app after that, fair play I also wouldn't trust a random stranger on the internet with my windows registry.
 
-As for the explorer reload, this goes back to the fact that I use policies for block sessions. When creating a new subkey in the policies key, you usually need to relog/restart your computer. However, killing windows explorer and restarting it does the trick too. This should only happen if my app doesn't already find disallowrun in your windows policies, however no harm is usually done by restarting explorer anyway.
+As for the explorer reload, this goes back to the fact that I use policies for block sessions.
+When creating a new subkey in the policies key, you usually need to relog/restart your computer.
+However, killing windows explorer and restarting it does the trick too.
+This should only happen if my app doesn't already find disallowrun in your windows policies, however no harm is usually done by restarting explorer anyway.
 
 If you still don't trust me about the app, fair enough. However, you can download the source code and make a build version of it yourself, since that should work too and you *know* what code is being used then.
 Making a build version for DO follows the normal way of making a flutter build for any app. However, after building the app you do need to make some changes to the release folder, specifically:
+
 - Make a new folder called "appdata" (**NOT THE %appdata% MADE BY WINDOWS**) in release and move all flutter folders + the app into it.
 - Move the python executable + the _internal folder into the main release folder.
 - Rename the flutter app inside "appdata" to "appfrontend"
