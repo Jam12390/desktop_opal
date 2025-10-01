@@ -76,26 +76,45 @@ def initialPolicyCheck():
     location = winreg.HKEY_CURRENT_USER
     try:
         try:
-            keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_SET_VALUE)
+            keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\Policies\\EXPLORER\\DisallowRun", 0, winreg.KEY_SET_VALUE)
             winreg.CloseKey(keyPath)
         except OSError as e:
-            soft = winreg.OpenKey(location, r"SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES", 0, winreg.KEY_WRITE)
-            explorerPolicyLocation = winreg.CreateKey(soft, "EXPLORER")
-            winreg.SetValueEx(explorerPolicyLocation, "DisallowRun", 0, winreg.REG_DWORD, 1)
-            winreg.CreateKey(explorerPolicyLocation, "DisallowRun")
-            winreg.CloseKey(explorerPolicyLocation)
-            winreg.CloseKey(soft)
+            #soft = winreg.OpenKey(location, r"SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\Policies", 0, winreg.KEY_WRITE)
+            #explorerPolicyLocation = winreg.CreateKey(soft, "EXPLORER")
+            #winreg.SetValueEx(explorerPolicyLocation, "DisallowRun", 0, winreg.REG_DWORD, 1)
+            #winreg.CreateKey(explorerPolicyLocation, "DisallowRun")
+            #winreg.CloseKey(explorerPolicyLocation)
+            #winreg.CloseKey(soft)
+            forgeRegPath()
             killFixedProcess(toKill="explorer.exe", restart=True)
     except Exception as e:
         errorLog.write(formatErrorLog(logtype="CRITICAL ERROR", log=f"WINDOWS REGISTRY FAILED TO OPEN: {e}.")) # type: ignore #uh oh
+        showNotif(NotifRequest(notifTitle="CRITICAL ERROR", notifSubtitle = f"The program encountered a critical error and was forced to close: {e}", audio="ms-winsoundevent:Notification.Reminder"))
         killSelf(params=CrashMsg(exception=str(e)))
         server.should_exit = True
+
+def forgeRegPath():
+    workingPath = "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION"
+    path = ["Policies", "EXPLORER", "DisallowRun"]
+    location = winreg.HKEY_CURRENT_USER
+    for subkey in path:
+        try:
+            keyPath = winreg.OpenKeyEx(location, f"{workingPath}\\{subkey}", 0, winreg.KEY_ALL_ACCESS) #can we open the next key? (i.e. does it exist?)
+            winreg.CloseKey(keyPath)
+        except Exception as e: #doesnt exist
+            soft = winreg.OpenKeyEx(location, workingPath, 0, winreg.KEY_ALL_ACCESS) #open the working path
+            winreg.CreateKey(soft, subkey) #create the next subkey
+            winreg.CloseKey(soft)
+        workingPath = f"{workingPath}\\{subkey}" #update the working path for the next iteration
+    disallowRunPath = winreg.OpenKeyEx(location, r"SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\Policies\\EXPLORER", 0, winreg.KEY_ALL_ACCESS)
+    winreg.SetValueEx(disallowRunPath, "DisallowRun", 0, winreg.REG_DWORD, 1)
+    winreg.CloseKey(disallowRunPath)
 
 @api.post("/terminateBlockedApps")
 def terminateBlockedApps():
     location = winreg.HKEY_CURRENT_USER #TODO: implement some return values for management in the dart script i.e. if termination fails we're fine but if blocking/unblocking fails then we're screwed
     try:
-        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DISALLOWRUN", 0, winreg.KEY_READ)
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\Policies\\EXPLORER\\DISALLOWRUN", 0, winreg.KEY_READ)
         blockedApps = []
         for key in range(1, winreg.QueryInfoKey(keyPath)[1]+1):
             blockedApps.append(winreg.QueryValueEx(keyPath, str(key))[0])
@@ -148,7 +167,7 @@ def createAppValues(params: RegRequest):
     valuesToCreate = params.values
     location = winreg.HKEY_CURRENT_USER
     try:
-        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER", 0, winreg.KEY_ALL_ACCESS)
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\Policies\\EXPLORER", 0, winreg.KEY_ALL_ACCESS)
     except Exception as e:
         errorLog.write(formatErrorLog(logtype="ERROR", log=f"Winreg path failed to open due to {e}.")) # type: ignore
         return -1
@@ -190,7 +209,7 @@ def deleteKeys(params: RegRequest):
     valuesToDelete = params.values
     location = winreg.HKEY_CURRENT_USER
     try:
-        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\Policies\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
     except Exception as e:
         errorLog.write(formatErrorLog(logtype="CRITICAL ERROR", log=f"FAILED TO UNBLOCK APPS DUE TO {e}. CONSULT THE UH OH BUTTON.")) # type: ignore
         wipeEntries()
@@ -221,7 +240,7 @@ def decreaseFurtherValues(startingValue : int, numberOfValues : int, keyPath : w
 def wipeEntries():
     location = winreg.HKEY_CURRENT_USER
     try:
-        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\POLICIES\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
+        keyPath = winreg.OpenKeyEx(location, "SOFTWARE\\MICROSOFT\\WINDOWS\\CURRENTVERSION\\Policies\\EXPLORER\\DisallowRun", 0, winreg.KEY_ALL_ACCESS)
         try:
             numberOfValues = winreg.QueryInfoKey(keyPath)[1]
             for key in range(1, numberOfValues):

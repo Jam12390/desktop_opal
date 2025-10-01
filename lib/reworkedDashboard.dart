@@ -273,11 +273,12 @@ class BreakTimer with ChangeNotifier{
             Uri.parse("http://127.0.0.1:8000/notify"),
             headers: {"Content-Type": "application/json"},
             body: jsonEncode({
-              "notfTitle": "Break Ending Soon!",
-              "notifSubtitle": "Warning: Apps will force close when break ends!",
+              "notifTitle": "Break Ending Soon!",
+              "notifSubtitle": "WARNING: Apps will force close on break end!",
               "audio": "ms-winsoundevent:Notification.Reminder"
-            })
-          );
+            }
+          )
+      );
         }
         updateValues(initDuration);
         notifyListeners();
