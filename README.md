@@ -39,6 +39,7 @@ Afterwards, run the app via the python executable, since this ensures the API is
 ## 🗒️Prerequisites
 Desktop_Opal requires:
 - Admin permission on launch to access and edit winreg.
+- **A windows 10 or 11 install, the app may not function correctly on other installs.**
 
 ## 🔽Installation
 - Download and extract the latest folder from releases.
